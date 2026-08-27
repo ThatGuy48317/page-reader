@@ -1,11 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '@/lib/firebase';
-import VoiceSelector from '@/components/VoiceSelector';
+import { VoiceSelector } from '@/components/VoiceSelector';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { DEFAULT_VOICE } from '@/constants/voices';
 
 export default function SettingsScreen() {
+  const [selectedVoice, setSelectedVoice] = useState<string>(DEFAULT_VOICE);
+
+  useEffect(() => {
+    const loadVoice = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('pagereader_default_voice');
+        if (stored) {
+          setSelectedVoice(stored);
+        }
+      } catch (e) {
+        console.error('Failed to load default voice', e);
+      }
+    };
+    loadVoice();
+  }, []);
+
+  const handleSelectVoice = async (voiceId: string) => {
+    setSelectedVoice(voiceId);
+    try {
+      await AsyncStorage.setItem('pagereader_default_voice', voiceId);
+    } catch (e) {
+      console.error('Failed to save default voice', e);
+    }
+  };
+
   const handleSignOut = async () => {
     try {
       await auth.signOut();
@@ -31,7 +58,7 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Preferences</Text>
           <View style={styles.card}>
             <Text style={styles.label}>Default Voice</Text>
-            <VoiceSelector />
+            <VoiceSelector selectedVoice={selectedVoice} onSelectVoice={handleSelectVoice} />
           </View>
         </View>
 

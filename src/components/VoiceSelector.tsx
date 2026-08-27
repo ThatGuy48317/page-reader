@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { VOICES } from '@/constants/voices';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
@@ -26,11 +25,7 @@ export function VoiceSelector({ selectedVoice, onSelectVoice, compact = false }:
                 ]}
                 onPress={() => onSelectVoice(voice.id)}
               >
-                <Ionicons
-                  name={voice.gender === 'male' ? 'man' : 'woman'}
-                  size={16}
-                  color={isSelected ? Colors.primary || '#3b82f6' : '#94a3b8'}
-                />
+                <Text style={{ fontSize: 16 }}>{voice.gender === 'male' ? '👨' : '👩'}</Text>
                 <Text style={[styles.compactChipText, isSelected && styles.selectedChipText]}>
                   {voice.name}
                 </Text>
@@ -53,18 +48,14 @@ export function VoiceSelector({ selectedVoice, onSelectVoice, compact = false }:
             onPress={() => onSelectVoice(voice.id)}
           >
             <View style={styles.listIconContainer}>
-              <Ionicons
-                name={voice.gender === 'male' ? 'man' : 'woman'}
-                size={24}
-                color={isSelected ? Colors.primary || '#3b82f6' : '#94a3b8'}
-              />
+              <Text style={{ fontSize: 24 }}>{voice.gender === 'male' ? '👨' : '👩'}</Text>
             </View>
             <View style={styles.listTextContainer}>
               <Text style={styles.listVoiceName}>{voice.name}</Text>
               <Text style={styles.listVoiceDesc}>{voice.description}</Text>
             </View>
             {isSelected && (
-              <Ionicons name="checkmark-circle" size={24} color={Colors.primary || '#3b82f6'} />
+              <Text style={{ fontSize: 24, color: Colors.primary || '#3b82f6' }}>✓</Text>
             )}
           </TouchableOpacity>
         );
@@ -83,7 +74,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1e293b',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: BorderRadius.pill || 9999,
+    borderRadius: BorderRadius.full || 9999,
     marginRight: 8,
     borderWidth: 1,
     borderColor: '#334155',

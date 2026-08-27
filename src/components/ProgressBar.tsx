@@ -45,11 +45,11 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     backgroundColor: '#334155',
-    borderRadius: BorderRadius.pill || 9999,
+    borderRadius: BorderRadius.full || 9999,
     overflow: 'hidden',
   },
   fill: {
     height: '100%',
-    borderRadius: BorderRadius.pill || 9999,
+    borderRadius: BorderRadius.full || 9999,
   },
 });

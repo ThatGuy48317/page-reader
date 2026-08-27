@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Chapter } from '@/types/book';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
@@ -49,7 +48,7 @@ export function AudioPlayer({ audioUri, chapters, bookTitle }: AudioPlayerProps)
     if (!chapters || chapters.length === 0) return null;
     let current = chapters[0];
     for (let i = 0; i < chapters.length; i++) {
-      if (position >= chapters[i].startTimeMs) {
+      if (position >= (chapters[i].startTime * 1000)) {
         current = chapters[i];
       } else {
         break;
@@ -96,7 +95,7 @@ export function AudioPlayer({ audioUri, chapters, bookTitle }: AudioPlayerProps)
 
       <View style={styles.controlsRow}>
         <TouchableOpacity onPress={() => skipBack(15)} style={styles.controlButton}>
-          <Ionicons name="play-back" size={32} color="#f8fafc" />
+          <Text style={{ fontSize: 24, color: '#f8fafc' }}>↺</Text>
           <Text style={styles.skipText}>15</Text>
         </TouchableOpacity>
 
@@ -109,12 +108,12 @@ export function AudioPlayer({ audioUri, chapters, bookTitle }: AudioPlayerProps)
             onPress={isPlaying ? pause : play} 
             style={styles.playButton}
           >
-            <Ionicons name={isPlaying ? "pause" : "play"} size={40} color="#ffffff" />
+            <Text style={{ fontSize: 32, color: '#ffffff' }}>{isPlaying ? '⏸' : '▶'}</Text>
           </TouchableOpacity>
         )}
 
         <TouchableOpacity onPress={() => skipForward(15)} style={styles.controlButton}>
-          <Ionicons name="play-forward" size={32} color="#f8fafc" />
+          <Text style={{ fontSize: 24, color: '#f8fafc' }}>↻</Text>
           <Text style={styles.skipText}>15</Text>
         </TouchableOpacity>
       </View>
@@ -127,18 +126,18 @@ export function AudioPlayer({ audioUri, chapters, bookTitle }: AudioPlayerProps)
         <ScrollView style={styles.chapterList}>
           <Text style={styles.chapterListTitle}>Chapters</Text>
           {chapters.map((chapter, index) => {
-            const isCurrent = currentChapter?.id === chapter.id;
+            const isCurrent = currentChapter === chapter;
             return (
               <TouchableOpacity 
-                key={chapter.id || index}
+                key={String(index)}
                 style={[styles.chapterItem, isCurrent && styles.chapterItemActive]}
-                onPress={() => seekTo(chapter.startTimeMs)}
+                onPress={() => seekTo(chapter.startTime * 1000)}
               >
                 <Text style={[styles.chapterItemText, isCurrent && styles.chapterItemTextActive]}>
                   {chapter.title}
                 </Text>
                 <Text style={styles.chapterItemTime}>
-                  {formatTime(chapter.startTimeMs)}
+                  {formatTime(chapter.startTime * 1000)}
                 </Text>
               </TouchableOpacity>
             );
@@ -237,7 +236,7 @@ const styles = StyleSheet.create({
   speedButton: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderRadius: BorderRadius.pill || 9999,
+    borderRadius: BorderRadius.full || 9999,
     backgroundColor: '#1e293b',
   },
   speedButtonActive: {

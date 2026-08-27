@@ -26,21 +26,21 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Library',
-          tabBarIcon: ({ color }) => <TabIcon emoji="📚" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon emoji="📚" color={String(color)} />,
         }}
       />
       <Tabs.Screen
         name="scan"
         options={{
           title: 'Scan',
-          tabBarIcon: ({ color }) => <TabIcon emoji="📹" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon emoji="📹" color={String(color)} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <TabIcon emoji="⚙️" color={color} />,
+          tabBarIcon: ({ color }) => <TabIcon emoji="⚙️" color={String(color)} />,
         }}
       />
     </Tabs>

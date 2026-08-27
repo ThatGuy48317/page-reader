@@ -70,7 +70,7 @@ export default function BookPlayerScreen() {
 
       <View style={styles.playerSection}>
         <Text style={styles.chapterText}>
-          {currentChapter ? `Chapter ${currentChapter.index}: ${currentChapter.title}` : 'Full Audiobook'}
+          {currentChapter ? `Chapter ${book.chapters?.indexOf(currentChapter) ?? 0 + 1}: ${currentChapter.title}` : 'Full Audiobook'}
         </Text>
 
         <View style={styles.progressContainer}>
@@ -85,7 +85,7 @@ export default function BookPlayerScreen() {
         </View>
 
         <View style={styles.controlsRow}>
-          <TouchableOpacity onPress={skipBack} style={styles.skipButton}>
+          <TouchableOpacity onPress={() => skipBack()} style={styles.skipButton}>
             <Text style={styles.skipText}>↺ 15s</Text>
           </TouchableOpacity>
 
@@ -101,7 +101,7 @@ export default function BookPlayerScreen() {
             )}
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={skipForward} style={styles.skipButton}>
+          <TouchableOpacity onPress={() => skipForward()} style={styles.skipButton}>
             <Text style={styles.skipText}>15s ↻</Text>
           </TouchableOpacity>
         </View>
@@ -122,14 +122,14 @@ export default function BookPlayerScreen() {
       {book.chapters && (
         <ScrollView style={styles.chaptersList} contentContainerStyle={{ padding: Spacing.md }}>
           <Text style={styles.chaptersHeader}>Chapters</Text>
-          {book.chapters.map((chap) => (
+          {book.chapters.map((chap, index) => (
             <TouchableOpacity 
-              key={chap.id} 
-              style={[styles.chapterItem, currentChapter?.id === chap.id && styles.chapterItemActive]}
+              key={String(index)} 
+              style={[styles.chapterItem, currentChapter === chap && styles.chapterItemActive]}
               onPress={() => seekTo(chap.startTime)}
             >
-              <Text style={[styles.chapterItemTitle, currentChapter?.id === chap.id && styles.chapterItemTitleActive]}>
-                {chap.index}. {chap.title}
+              <Text style={[styles.chapterItemTitle, currentChapter === chap && styles.chapterItemTitleActive]}>
+                {index + 1}. {chap.title}
               </Text>
               <Text style={styles.chapterItemTime}>{formatTime(chap.startTime)}</Text>
             </TouchableOpacity>

@@ -61,14 +61,14 @@ export function BookCard({ book, onPress }: BookCardProps) {
       </View>
 
       <View style={styles.detailsRow}>
-        {isReady && book.durationMs ? (
-          <Text style={styles.detailText}>{formatDuration(book.durationMs)}</Text>
+        {isReady && book.duration ? (
+          <Text style={styles.detailText}>{formatDuration(book.duration * 1000)}</Text>
         ) : null}
         <Text style={styles.detailText}>
           {formatDate(book.createdAt)}
         </Text>
-        {book.voiceId && (
-          <Text style={styles.detailText}>Voice: {book.voiceId}</Text>
+        {book.voiceName && (
+          <Text style={styles.detailText}>Voice: {book.voiceName}</Text>
         )}
       </View>
 

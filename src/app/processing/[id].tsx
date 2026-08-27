@@ -10,7 +10,7 @@ import { Book, ProcessingStep } from '@/types/book';
 const STEPS: { key: ProcessingStep; label: string }[] = [
   { key: 'uploading', label: 'Uploading Video' },
   { key: 'extracting', label: 'Extracting Text' },
-  { key: 'generating', label: 'Generating Audio' },
+  { key: 'generating_audio', label: 'Generating Audio' },
   { key: 'ready', label: 'Ready' },
 ];
 

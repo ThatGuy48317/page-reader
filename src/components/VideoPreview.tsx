@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 interface VideoPreviewProps {
@@ -14,7 +13,7 @@ export function VideoPreview({ videoUri }: VideoPreviewProps) {
   return (
     <View style={styles.container}>
       <View style={styles.iconContainer}>
-        <Ionicons name="videocam" size={48} color="#94a3b8" />
+        <Text style={{ fontSize: 32 }}>🎬</Text>
       </View>
       <View style={styles.infoContainer}>
         <Text style={styles.title}>Video Selected</Text>

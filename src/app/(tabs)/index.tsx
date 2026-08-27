@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } fr
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBooks } from '@/hooks/useBooks';
-import BookCard from '@/components/BookCard';
+import { BookCard } from '@/components/BookCard';
 import { Colors, Spacing, FontSize } from '@/constants/theme';
 import { Book } from '@/types/book';
 
