@@ -4,13 +4,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { storage, db, auth, functions } from '@/lib/firebase';
 import { VOICES, DEFAULT_VOICE } from '@/constants/voices';
 import { DOCUMENT_TYPES, DEFAULT_DOCUMENT_TYPE } from '@/constants/documentTypes';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { IPAgreementModal } from '@/components/IPAgreementModal';
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -24,6 +25,7 @@ export default function ScanScreen() {
   const [title, setTitle] = useState('');
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE);
   const [documentType, setDocumentType] = useState(DEFAULT_DOCUMENT_TYPE);
+  const [showIPModal, setShowIPModal] = useState(false);
   
   const cameraRef = useRef<any>(null);
 
@@ -58,7 +60,7 @@ export default function ScanScreen() {
     }
   };
 
-  const processVideo = async () => {
+  const triggerUploadAndProcess = async () => {
     if (!videoUri || !title) return;
     setIsUploading(true);
 
@@ -84,14 +86,20 @@ export default function ScanScreen() {
             title,
             userId: auth.currentUser?.uid || 'anon',
             status: 'uploading',
-            voice: selectedVoice,
+            voiceName: selectedVoice,
+            documentType,
             createdAt: serverTimestamp(),
-            videoPath: filename,
+            videoUri: filename,
+            progress: 10,
           });
           
           const processVideoFn = httpsCallable(functions, 'processVideo');
-          processVideoFn({ storagePath: filename, voiceName: selectedVoice, bookId: docRef.id })
-            .catch(console.error);
+          processVideoFn({ 
+            bookId: docRef.id,
+            videoPath: filename,
+            voiceName: selectedVoice,
+            documentType,
+          }).catch(console.error);
 
           setIsUploading(false);
           setMode('idle');
@@ -105,6 +113,12 @@ export default function ScanScreen() {
       console.error(error);
       setIsUploading(false);
     }
+  };
+
+  const handleProcessPress = () => {
+    if (!videoUri || !title) return;
+    // Open the IP protection modal first
+    setShowIPModal(true);
   };
 
   if (mode === 'idle') {
@@ -201,9 +215,25 @@ export default function ScanScreen() {
           ))}
         </ScrollView>
 
+        <Text style={styles.inputLabel}>Reading Style</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.voiceList}>
+          {DOCUMENT_TYPES.map(type => (
+            <TouchableOpacity 
+              key={type.id} 
+              style={[styles.voiceChip, documentType === type.id && styles.voiceChipActive]}
+              onPress={() => setDocumentType(type.id)}
+              disabled={isUploading}
+            >
+              <Text style={[styles.voiceChipText, documentType === type.id && styles.voiceChipTextActive]}>
+                {type.emoji} {type.name}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
         <TouchableOpacity 
           style={[styles.processButton, (!title || isUploading) && styles.processButtonDisabled]} 
-          onPress={processVideo}
+          onPress={handleProcessPress}
           disabled={!title || isUploading}
         >
           {isUploading ? (
@@ -216,6 +246,15 @@ export default function ScanScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      <IPAgreementModal 
+        visible={showIPModal}
+        onAccept={() => {
+          setShowIPModal(false);
+          triggerUploadAndProcess();
+        }}
+        onCancel={() => setShowIPModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -247,12 +286,12 @@ const styles = StyleSheet.create({
   videoPlaceholderText: { color: Colors.textSecondary, fontSize: FontSize.md },
   inputLabel: { color: Colors.textSecondary, fontSize: FontSize.sm, marginBottom: Spacing.xs, textTransform: 'uppercase' },
   input: { backgroundColor: Colors.surface, color: Colors.text, padding: Spacing.md, borderRadius: BorderRadius.sm, fontSize: FontSize.md, marginBottom: Spacing.xl },
-  voiceList: { flexDirection: 'row', marginBottom: Spacing.xxl },
+  voiceList: { flexDirection: 'row', marginBottom: Spacing.xl },
   voiceChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: 20, backgroundColor: Colors.surface, marginRight: Spacing.sm, borderWidth: 1, borderColor: Colors.surfaceLight },
   voiceChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
   voiceChipText: { color: Colors.textSecondary },
   voiceChipTextActive: { color: Colors.text, fontWeight: 'bold' },
-  processButton: { backgroundColor: Colors.primary, padding: Spacing.lg, borderRadius: BorderRadius.md, alignItems: 'center' },
+  processButton: { backgroundColor: Colors.primary, padding: Spacing.lg, borderRadius: BorderRadius.md, alignItems: 'center', marginTop: Spacing.lg },
   processButtonDisabled: { opacity: 0.5 },
   processButtonText: { color: Colors.text, fontSize: FontSize.lg, fontWeight: 'bold' },
   uploadingContainer: { flexDirection: 'row', alignItems: 'center' },
