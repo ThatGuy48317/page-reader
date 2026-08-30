@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import { db, functions } from '@/lib/firebase';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Book, Chapter } from '@/types/book';
+import { VOICES } from '@/constants/voices';
+import { DOCUMENT_TYPES } from '@/constants/documentTypes';
 
 const formatTime = (seconds: number) => {
   const m = Math.floor(seconds / 60);
@@ -19,6 +22,10 @@ export default function BookPlayerScreen() {
   const router = useRouter();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('auto');
+  const [isReprocessing, setIsReprocessing] = useState(false);
 
   const { 
     isPlaying, position, duration, rate, isLoading,
@@ -31,7 +38,10 @@ export default function BookPlayerScreen() {
       const docRef = doc(db, 'books', id as string);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
-        setBook({ id: snap.id, ...snap.data() } as Book);
+        const bookData = snap.data() as Book;
+        setBook({ ...bookData, id: snap.id });
+        setSelectedVoice(bookData.voiceName || 'Kore');
+        setSelectedStyle(bookData.documentType || 'auto');
       }
       setLoading(false);
     };
@@ -54,6 +64,35 @@ export default function BookPlayerScreen() {
 
   const speedOptions = [0.75, 1, 1.25, 1.5, 2];
 
+  const handleReNarrate = async () => {
+    if (isReprocessing) return;
+    setIsReprocessing(true);
+    try {
+      const docRef = doc(db, 'books', book.id);
+      await updateDoc(docRef, {
+        status: 'extracting',
+        progress: 10,
+        voiceName: selectedVoice,
+        documentType: selectedStyle,
+      });
+
+      const processVideoFn = httpsCallable(functions, 'processVideo');
+      processVideoFn({
+        bookId: book.id,
+        videoPath: book.videoUri,
+        voiceName: selectedVoice,
+        documentType: selectedStyle,
+      }).catch(console.error);
+
+      setShowSettings(false);
+      router.push(`/processing/${book.id}`);
+    } catch (e) {
+      console.error('Re-narration failed', e);
+    } finally {
+      setIsReprocessing(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -61,20 +100,26 @@ export default function BookPlayerScreen() {
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{book.title}</Text>
-        <View style={{ width: 40 }} />
+        <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.settingsButton}>
+          <Text style={styles.settingsButtonIcon}>⚙️</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.illustrationContainer}>
         <Text style={styles.illustrationIcon}>📖</Text>
+        {book.detectedType && (
+          <Text style={styles.detectedStyleTag}>
+            Style: {DOCUMENT_TYPES.find(d => d.id === book.detectedType)?.name || book.detectedType}
+          </Text>
+        )}
       </View>
 
       <View style={styles.playerSection}>
         <Text style={styles.chapterText}>
-          {currentChapter ? `Chapter ${book.chapters?.indexOf(currentChapter) ?? 0 + 1}: ${currentChapter.title}` : 'Full Audiobook'}
+          {currentChapter ? `Chapter ${(book.chapters?.indexOf(currentChapter) ?? 0) + 1}: ${currentChapter.title}` : 'Full Audiobook'}
         </Text>
 
         <View style={styles.progressContainer}>
-          {/* Simple slider representation (use expo-slider or slider component in real app) */}
           <View style={styles.progressBarBg}>
             <View style={[styles.progressBarFill, { width: `${duration > 0 ? (position / duration) * 100 : 0}%` }]} />
           </View>
@@ -136,6 +181,66 @@ export default function BookPlayerScreen() {
           ))}
         </ScrollView>
       )}
+
+      {/* Re-narration Settings Modal */}
+      <Modal visible={showSettings} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Audiobook Narration Settings</Text>
+              <TouchableOpacity onPress={() => setShowSettings(false)}>
+                <Text style={styles.closeModalText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <Text style={styles.modalSectionLabel}>Select Voice</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollOptions}>
+                {VOICES.map(v => (
+                  <TouchableOpacity 
+                    key={v.id} 
+                    style={[styles.optionChip, selectedVoice === v.id && styles.optionChipActive]}
+                    onPress={() => setSelectedVoice(v.id)}
+                  >
+                    <Text style={[styles.optionChipText, selectedVoice === v.id && styles.optionChipTextActive]}>
+                      {v.gender === 'male' ? '👨' : '👩'} {v.name}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+
+              <Text style={styles.modalSectionLabel}>Select Reading Style</Text>
+              <View style={styles.verticalOptions}>
+                {DOCUMENT_TYPES.map(type => (
+                  <TouchableOpacity 
+                    key={type.id} 
+                    style={[styles.styleListItem, selectedStyle === type.id && styles.styleListItemActive]}
+                    onPress={() => setSelectedStyle(type.id)}
+                  >
+                    <Text style={styles.styleListEmoji}>{type.emoji}</Text>
+                    <View style={styles.styleListText}>
+                      <Text style={styles.styleListName}>{type.name}</Text>
+                      <Text style={styles.styleListDesc}>{type.description}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity 
+                style={[styles.reNarrateButton, isReprocessing && styles.reNarrateButtonDisabled]}
+                onPress={handleReNarrate}
+                disabled={isReprocessing}
+              >
+                {isReprocessing ? (
+                  <ActivityIndicator color={Colors.text} />
+                ) : (
+                  <Text style={styles.reNarrateButtonText}>Re-Narrate Audiobook 🔁</Text>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -146,10 +251,13 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, justifyContent: 'space-between' },
   backButton: { padding: Spacing.sm, width: 40, alignItems: 'center' },
   backButtonText: { color: Colors.primary, fontSize: FontSize.xl, fontWeight: 'bold' },
+  settingsButton: { padding: Spacing.sm, width: 40, alignItems: 'center' },
+  settingsButtonIcon: { fontSize: FontSize.xl },
   headerTitle: { flex: 1, color: Colors.text, fontSize: FontSize.lg, fontWeight: 'bold', textAlign: 'center' },
   
-  illustrationContainer: { margin: Spacing.xl, height: 240, backgroundColor: Colors.surfaceLight, borderRadius: BorderRadius.lg, justifyContent: 'center', alignItems: 'center' },
-  illustrationIcon: { fontSize: 96 },
+  illustrationContainer: { margin: Spacing.xl, height: 200, backgroundColor: Colors.surfaceLight, borderRadius: BorderRadius.lg, justifyContent: 'center', alignItems: 'center', position: 'relative' },
+  illustrationIcon: { fontSize: 80 },
+  detectedStyleTag: { position: 'absolute', bottom: Spacing.md, backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: Spacing.md, paddingVertical: Spacing.xs, borderRadius: 12, color: Colors.primary, fontSize: FontSize.xs, fontWeight: '600' },
   
   playerSection: { paddingHorizontal: Spacing.xl, paddingBottom: Spacing.xl },
   chapterText: { color: Colors.text, fontSize: FontSize.md, fontWeight: '600', textAlign: 'center', marginBottom: Spacing.lg },
@@ -164,7 +272,7 @@ const styles = StyleSheet.create({
   skipButton: { padding: Spacing.md },
   skipText: { color: Colors.textSecondary, fontSize: FontSize.sm, fontWeight: 'bold' },
   playButton: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.primary, justifyContent: 'center', alignItems: 'center' },
-  playIcon: { color: Colors.text, fontSize: 32, marginLeft: 4 }, // slight offset for play icon optical center
+  playIcon: { color: Colors.text, fontSize: 32, marginLeft: 4 },
   
   speedRow: { flexDirection: 'row', justifyContent: 'center', gap: Spacing.sm },
   speedButton: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: 16, backgroundColor: Colors.surface },
@@ -179,4 +287,30 @@ const styles = StyleSheet.create({
   chapterItemTitle: { color: Colors.text, fontSize: FontSize.md, flex: 1 },
   chapterItemTitleActive: { color: Colors.primary, fontWeight: 'bold' },
   chapterItemTime: { color: Colors.textSecondary, fontSize: FontSize.md },
+
+  // Modal styling
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
+  modalContainer: { height: '80%', backgroundColor: Colors.background, borderTopLeftRadius: BorderRadius.lg, borderTopRightRadius: BorderRadius.lg, padding: Spacing.lg },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border, paddingBottom: Spacing.md },
+  modalTitle: { fontSize: FontSize.lg, fontWeight: 'bold', color: Colors.text },
+  closeModalText: { fontSize: 20, color: Colors.textSecondary, fontWeight: 'bold' },
+  modalContent: { paddingBottom: Spacing.xxl },
+  modalSectionLabel: { color: Colors.textSecondary, fontSize: FontSize.sm, fontWeight: 'bold', textTransform: 'uppercase', marginTop: Spacing.md, marginBottom: Spacing.sm },
+  scrollOptions: { flexDirection: 'row', marginBottom: Spacing.md },
+  optionChip: { paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: 20, backgroundColor: Colors.surface, marginRight: Spacing.sm, borderWidth: 1, borderColor: Colors.surfaceLight },
+  optionChipActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  optionChipText: { color: Colors.textSecondary },
+  optionChipTextActive: { color: Colors.text, fontWeight: 'bold' },
+
+  verticalOptions: { gap: Spacing.sm, marginBottom: Spacing.lg },
+  styleListItem: { flexDirection: 'row', alignItems: 'center', padding: Spacing.md, backgroundColor: Colors.surface, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: 'transparent' },
+  styleListItemActive: { borderColor: Colors.primary },
+  styleListEmoji: { fontSize: 24, marginRight: Spacing.md },
+  styleListText: { flex: 1 },
+  styleListName: { color: Colors.text, fontSize: FontSize.md, fontWeight: 'bold', marginBottom: 2 },
+  styleListDesc: { color: Colors.textSecondary, fontSize: FontSize.xs },
+
+  reNarrateButton: { backgroundColor: Colors.primary, padding: Spacing.lg, borderRadius: BorderRadius.md, alignItems: 'center', marginTop: Spacing.md },
+  reNarrateButtonDisabled: { opacity: 0.5 },
+  reNarrateButtonText: { color: Colors.text, fontSize: FontSize.lg, fontWeight: 'bold' },
 });

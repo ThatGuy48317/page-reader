@@ -129,7 +129,7 @@ export const processVideo = onCall(
     }
 
     const userId = request.auth.uid;
-    const { bookId, videoPath, voiceName = "Kore" } = request.data;
+    const { bookId, videoPath, voiceName = "Kore", documentType = "auto" } = request.data;
 
     if (!bookId || !videoPath) {
       throw new HttpsError(
@@ -142,7 +142,9 @@ export const processVideo = onCall(
 
     try {
       // ── Step 1: Update status to extracting ──
-      await updateStatus(userId, bookId, "extracting", 10);
+      await updateStatus(userId, bookId, "extracting", 10, {
+        documentType,
+      });
 
       // ── Step 2: Download video from Firebase Storage ──
       const file = bucket.file(videoPath);
@@ -211,7 +213,115 @@ Instructions:
         );
       }
 
-      // ── Step 5: Clean the extracted text ──
+      // ── Step 5: Detect reading style (document type) ──
+      await updateStatus(userId, bookId, "extracting", 50);
+      
+      let targetStyle = documentType;
+      if (documentType === "auto") {
+        try {
+          const classificationResponse = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  {
+                    text: `Analyze the following book text excerpt and classify it into one of these categories:
+- fiction (Fictional novels, stories, drama)
+- academic (Academic papers, research reports, scientific journals)
+- nonfiction (Non-fiction books, textbooks, biographies, user manuals)
+- poetry (Poetry, verse, lyrics)
+- children (Children's books, simple stories)
+
+Return ONLY the name of the category (one of: fiction, academic, nonfiction, poetry, children). Do not write anything else.
+
+Text excerpt:
+${rawText.substring(0, 3000)}`,
+                  },
+                ],
+              },
+            ],
+          });
+          const classificationText = (classificationResponse.text || "nonfiction").trim().toLowerCase();
+          if (["fiction", "academic", "nonfiction", "poetry", "children"].includes(classificationText)) {
+            targetStyle = classificationText;
+          } else {
+            targetStyle = "nonfiction";
+          }
+        } catch (e) {
+          console.error("Style classification failed, falling back to nonfiction", e);
+          targetStyle = "nonfiction";
+        }
+      }
+
+      // Define style-specific prompts for text cleaning
+      let cleaningPrompt = "";
+      let ttsSystemInstruction = "";
+
+      switch (targetStyle) {
+        case "fiction":
+          cleaningPrompt = `Clean this fictional book text for audiobook narration. The text was extracted from video frames of book pages.
+Rules:
+- Remove any remaining page numbers, footnote markers, or reference numbers.
+- Fix broken words and OCR artifacts.
+- Focus on dialogue flow. You are encouraged to inject vocal steering tags (like '[excited]', '[whispering]', '[sighs]', '[sad]', '[gasps]') around direct speech where the text explicitly suggests this emotion or tone, to allow the TTS engine to perform a dramatic, narrative reading. Make sure the tags are placed inside the text appropriately (e.g., He said, "[excited] I can't believe it!").
+- Keep [CHAPTER: title] markers exactly as they are.
+- Remove duplicate text from overlapping video frames.
+- Return clean, natural prose ready for text-to-speech narration.
+- Do NOT add any commentary or metadata.`;
+          ttsSystemInstruction = "Read in an expressive, narrative storytelling voice, adapting your tone to direct speech emotion tags.";
+          break;
+
+        case "academic":
+          cleaningPrompt = `Clean this academic/scientific paper text for audiobook narration. The text was extracted from video frames.
+Rules:
+- Remove all inline parenthetical citations (e.g. (Smith et al., 2018), [12, 15], Smith (2019)).
+- Remove reference lists, bibliographies, page numbers, footnotes, and running headers/footers.
+- Keep mathematical formulas readable (e.g., translate symbols to word equivalents where helpful, like "x squared" or "alpha").
+- Format section titles as [CHAPTER: Section Title].
+- Ensure smooth sentence flow (text from adjacent pages should read naturally).
+- Return clean, professional, objective reading prose. Do NOT include any emotion/steering tags.
+- Do NOT add any commentary or summaries.`;
+          ttsSystemInstruction = "Read in a clear, professional, objective academic tone, with steady pacing and no dramatic styling.";
+          break;
+
+        case "poetry":
+          cleaningPrompt = `Clean this poetry text for audiobook narration. The text was extracted from video frames.
+Rules:
+- Keep line breaks and verse structures intact (use single line breaks).
+- Remove page numbers, running headers/footers, or scan marks.
+- Mark new poems or sections as [CHAPTER: Title].
+- Add brief silence/pause markers (e.g., [pause]) at the end of stanzas to give the reading natural breathing room.
+- Ensure the text reads with cadence. Do NOT inject emotional tags like '[whispering]'.
+- Do NOT add any commentary.`;
+          ttsSystemInstruction = "Read with measured cadence, dramatic emphasis, and natural pauses at line/stanza ends.";
+          break;
+
+        case "children":
+          cleaningPrompt = `Clean this children's book text for audiobook narration. The text was extracted from video frames.
+Rules:
+- Fix spelling/glitches from scanning.
+- Make dialogue highly readable. You may insert expressive tags (like '[excited]', '[laughing]', '[whispering]', '[scared]') to guide the narrator.
+- Keep chapter markers as [CHAPTER: Title].
+- Return clean, playful, engaging storytelling prose.
+- Do NOT add any commentary.`;
+          ttsSystemInstruction = "Read in a warm, playful, highly energetic, and engaging voice, suitable for children.";
+          break;
+
+        case "nonfiction":
+        default:
+          cleaningPrompt = `Clean this non-fiction book or textbook text for audiobook narration. The text was extracted from video frames.
+Rules:
+- Remove page numbers, running headers/footers, footnotes, and index references.
+- Fix spelling, spacing, and broken words across page breaks.
+- Ensure clear, informative structural breaks. Mark new sections as [CHAPTER: Section Title].
+- Read in a clear, objective, informative, and engaging non-fiction narrator style. Do NOT include emotional tags.
+- Do NOT add any commentary.`;
+          ttsSystemInstruction = "Read in a clear, informative, objective non-fiction narrator style.";
+          break;
+      }
+
+      // ── Step 6: Clean the extracted text ──
       await updateStatus(userId, bookId, "extracting", 60);
 
       const cleaningResponse = await ai.models.generateContent({
@@ -221,17 +331,7 @@ Instructions:
             role: "user",
             parts: [
               {
-                text: `Clean this book text for audiobook narration. The text was extracted from video frames of book pages.
-
-Rules:
-- Remove any remaining page numbers, footnote markers, or reference numbers
-- Fix broken words and OCR artifacts
-- Ensure smooth sentence flow (text from adjacent pages should read naturally)
-- Keep [CHAPTER: title] markers exactly as they are
-- Remove duplicate text (from overlapping video frames)
-- Fix punctuation and spacing issues
-- Return clean, natural prose ready for text-to-speech narration
-- Do NOT add any commentary, headers, or metadata — just the clean book text
+                text: `${cleaningPrompt}
 
 Text to clean:
 ${rawText}`,
@@ -248,6 +348,7 @@ ${rawText}`,
 
       await updateStatus(userId, bookId, "generating_audio", 65, {
         extractedText: cleanText,
+        detectedType: targetStyle,
         chapters: chapters.map((c) => ({
           title: c.title,
           textOffset: c.textOffset,
@@ -275,6 +376,7 @@ ${rawText}`,
             },
           ],
           config: {
+            systemInstruction: ttsSystemInstruction,
             responseModalities: ["AUDIO"],
             speechConfig: {
               voiceConfig: {

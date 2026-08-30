@@ -9,6 +9,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { storage, db, auth, functions } from '@/lib/firebase';
 import { VOICES, DEFAULT_VOICE } from '@/constants/voices';
+import { DOCUMENT_TYPES, DEFAULT_DOCUMENT_TYPE } from '@/constants/documentTypes';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 export default function ScanScreen() {
@@ -22,6 +23,7 @@ export default function ScanScreen() {
   
   const [title, setTitle] = useState('');
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE);
+  const [documentType, setDocumentType] = useState(DEFAULT_DOCUMENT_TYPE);
   
   const cameraRef = useRef<any>(null);
 

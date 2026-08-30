@@ -14,6 +14,8 @@ export interface Book {
   extractedText?: string;
   chapters: Chapter[];
   voiceName: string;
+  documentType: string;
+  detectedType?: string;
   createdAt: number;
   duration?: number; // seconds
   errorMessage?: string;
