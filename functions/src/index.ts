@@ -1,11 +1,15 @@
 import * as admin from "firebase-admin";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onSchedule } from "firebase-functions/v2/scheduler";
 import { GoogleGenAI } from "@google/genai";
 import { defineSecret } from "firebase-functions/params";
 
 admin.initializeApp();
 
 const geminiApiKey = defineSecret("GEMINI_API_KEY");
+
+// Default retention duration for audio files (change this for dev testing)
+const DEFAULT_RETENTION_DAYS = 7;
 
 const db = admin.firestore();
 const bucket = admin.storage().bucket();
@@ -514,10 +518,12 @@ ${rawText.substring(0, 3000)}`,
       });
 
       // ── Step 9: Update Firestore with completion status ──
+      const expiresAt = Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
       await updateStatus(userId, bookId, "ready", 100, {
         audioUri: audioPath,
         duration: Math.round(totalAudioDuration),
         chapters: chaptersWithTimes,
+        expiresAt,
       });
 
       // Clean up the Gemini uploaded file
@@ -636,3 +642,70 @@ export const retryProcessing = onCall(
     };
   }
 );
+
+/**
+ * Daily scheduled function to clean up expired audiobook audio files from Cloud Storage
+ * and update their statuses to "expired".
+ */
+export const cleanupExpiredAudio = onSchedule("every 24 hours", async (event) => {
+  const now = Date.now();
+  console.log(`Running scheduled cleanup for expired audio at: ${new Date(now).toISOString()}`);
+
+  try {
+    const expiredBooksQuery = await db
+      .collectionGroup("books")
+      .where("status", "==", "ready")
+      .where("expiresAt", "<=", now)
+      .get();
+
+    console.log(`Found ${expiredBooksQuery.size} expired books to clean up.`);
+
+    const promises = expiredBooksQuery.docs.map(async (docSnap) => {
+      const bookData = docSnap.data();
+      const bookId = docSnap.id;
+      const audioUri = bookData.audioUri;
+      
+      // Extract userId from the document reference path (users/{userId}/books/{bookId})
+      const userId = docSnap.ref.parent.parent?.id;
+
+      if (!userId) {
+        console.error(`Could not extract userId for book ${bookId}`);
+        return;
+      }
+
+      console.log(`Cleaning up expired book ${bookId} for user ${userId}`);
+
+      // 1. Delete the audio file from Firebase Storage
+      if (audioUri) {
+        try {
+          const audioFile = bucket.file(audioUri);
+          const [exists] = await audioFile.exists();
+          if (exists) {
+            await audioFile.delete();
+            console.log(`Successfully deleted audio file ${audioUri}`);
+          }
+        } catch (e) {
+          console.error(`Failed to delete audio file ${audioUri} from storage`, e);
+        }
+      }
+
+      // 2. Update Firestore status to 'expired' and clear audioUri
+      try {
+        await docSnap.ref.update({
+          status: "expired",
+          audioUri: admin.firestore.FieldValue.delete(),
+          progress: 0,
+          updatedAt: now,
+        });
+        console.log(`Updated status to 'expired' for book ${bookId}`);
+      } catch (e) {
+        console.error(`Failed to update Firestore document for book ${bookId}`, e);
+      }
+    });
+
+    await Promise.all(promises);
+    console.log("Scheduled cleanup completed successfully.");
+  } catch (error) {
+    console.error("Scheduled cleanup failed:", error);
+  }
+});

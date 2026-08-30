@@ -18,6 +18,7 @@ export function BookCard({ book, onPress }: BookCardProps) {
       case 'extracting': return '#3b82f6'; // blue
       case 'generating_audio': return '#a855f7'; // purple
       case 'ready': return '#22c55e'; // green
+      case 'expired': return '#64748b'; // slate/gray
       case 'error': return '#ef4444'; // red
       default: return '#64748b'; // slate
     }
@@ -29,6 +30,7 @@ export function BookCard({ book, onPress }: BookCardProps) {
       case 'extracting': return 'Extracting Text...';
       case 'generating_audio': return 'Generating Audio...';
       case 'ready': return 'Ready';
+      case 'expired': return 'Expired (Deleted)';
       case 'error': return 'Error';
       default: return 'Unknown';
     }

@@ -114,55 +114,70 @@ export default function BookPlayerScreen() {
         )}
       </View>
 
-      <View style={styles.playerSection}>
-        <Text style={styles.chapterText}>
-          {currentChapter ? `Chapter ${(book.chapters?.indexOf(currentChapter) ?? 0) + 1}: ${currentChapter.title}` : 'Full Audiobook'}
-        </Text>
-
-        <View style={styles.progressContainer}>
-          <View style={styles.progressBarBg}>
-            <View style={[styles.progressBarFill, { width: `${duration > 0 ? (position / duration) * 100 : 0}%` }]} />
-          </View>
-          <View style={styles.timeRow}>
-            <Text style={styles.timeText}>{formatTime(position)}</Text>
-            <Text style={styles.timeText}>{formatTime(duration)}</Text>
-          </View>
-        </View>
-
-        <View style={styles.controlsRow}>
-          <TouchableOpacity onPress={() => skipBack()} style={styles.skipButton}>
-            <Text style={styles.skipText}>↺ 15s</Text>
-          </TouchableOpacity>
-
+      {book.status === 'expired' ? (
+        <View style={styles.expiredContainer}>
+          <Text style={styles.expiredTitle}>⏰ Audio Expired</Text>
+          <Text style={styles.expiredDescription}>
+            The generated audio for this book has expired to save cloud storage space. You can re-narrate it for free to generate a fresh audio track.
+          </Text>
           <TouchableOpacity 
-            style={styles.playButton} 
-            onPress={isPlaying ? pause : play}
-            disabled={isLoading}
+            style={styles.reNarrateButtonInline}
+            onPress={() => setShowSettings(true)}
           >
-            {isLoading ? (
-              <ActivityIndicator color={Colors.background} />
-            ) : (
-              <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => skipForward()} style={styles.skipButton}>
-            <Text style={styles.skipText}>15s ↻</Text>
+            <Text style={styles.reNarrateButtonTextInline}>Configure & Re-narrate 🔁</Text>
           </TouchableOpacity>
         </View>
+      ) : (
+        <View style={styles.playerSection}>
+          <Text style={styles.chapterText}>
+            {currentChapter ? `Chapter ${(book.chapters?.indexOf(currentChapter) ?? 0) + 1}: ${currentChapter.title}` : 'Full Audiobook'}
+          </Text>
 
-        <View style={styles.speedRow}>
-          {speedOptions.map(r => (
-            <TouchableOpacity 
-              key={r} 
-              style={[styles.speedButton, rate === r && styles.speedButtonActive]}
-              onPress={() => setRate(r)}
-            >
-              <Text style={[styles.speedText, rate === r && styles.speedTextActive]}>{r}x</Text>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${duration > 0 ? (position / duration) * 100 : 0}%` }]} />
+            </View>
+            <View style={styles.timeRow}>
+              <Text style={styles.timeText}>{formatTime(position)}</Text>
+              <Text style={styles.timeText}>{formatTime(duration)}</Text>
+            </View>
+          </View>
+
+          <View style={styles.controlsRow}>
+            <TouchableOpacity onPress={() => skipBack()} style={styles.skipButton}>
+              <Text style={styles.skipText}>↺ 15s</Text>
             </TouchableOpacity>
-          ))}
+
+            <TouchableOpacity 
+              style={styles.playButton} 
+              onPress={isPlaying ? pause : play}
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <ActivityIndicator color={Colors.background} />
+              ) : (
+                <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => skipForward()} style={styles.skipButton}>
+              <Text style={styles.skipText}>15s ↻</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.speedRow}>
+            {speedOptions.map(r => (
+              <TouchableOpacity 
+                key={r} 
+                style={[styles.speedButton, rate === r && styles.speedButtonActive]}
+                onPress={() => setRate(r)}
+              >
+                <Text style={[styles.speedText, rate === r && styles.speedTextActive]}>{r}x</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
-      </View>
+      )}
 
       {book.chapters && (
         <ScrollView style={styles.chaptersList} contentContainerStyle={{ padding: Spacing.md }}>
@@ -313,4 +328,11 @@ const styles = StyleSheet.create({
   reNarrateButton: { backgroundColor: Colors.primary, padding: Spacing.lg, borderRadius: BorderRadius.md, alignItems: 'center', marginTop: Spacing.md },
   reNarrateButtonDisabled: { opacity: 0.5 },
   reNarrateButtonText: { color: Colors.text, fontSize: FontSize.lg, fontWeight: 'bold' },
+
+  // Expired player styling
+  expiredContainer: { padding: Spacing.lg, backgroundColor: Colors.surface, borderRadius: BorderRadius.md, marginHorizontal: Spacing.md, alignItems: 'center', borderWidth: 1, borderColor: Colors.border },
+  expiredTitle: { fontSize: FontSize.lg, fontWeight: 'bold', color: Colors.error, marginBottom: Spacing.sm },
+  expiredDescription: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: Spacing.md },
+  reNarrateButtonInline: { backgroundColor: Colors.primary, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.lg, borderRadius: BorderRadius.md, alignItems: 'center' },
+  reNarrateButtonTextInline: { color: Colors.text, fontSize: FontSize.md, fontWeight: 'bold' },
 });

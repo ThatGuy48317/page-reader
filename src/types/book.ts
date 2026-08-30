@@ -7,7 +7,7 @@ export interface Chapter {
 export interface Book {
   id: string;
   title: string;
-  status: 'uploading' | 'extracting' | 'generating_audio' | 'ready' | 'error';
+  status: 'uploading' | 'extracting' | 'generating_audio' | 'ready' | 'expired' | 'error';
   progress: number;  // 0-100
   videoUri: string;  // Firebase Storage path
   audioUri?: string; // Firebase Storage path when ready
@@ -17,11 +17,12 @@ export interface Book {
   documentType: string;
   detectedType?: string;
   createdAt: number;
+  expiresAt?: number; // Expiration timestamp
   duration?: number; // seconds
   errorMessage?: string;
 }
 
-export type ProcessingStep = 'uploading' | 'extracting' | 'generating_audio' | 'ready' | 'error';
+export type ProcessingStep = 'uploading' | 'extracting' | 'generating_audio' | 'ready' | 'expired' | 'error';
 
 export interface Voice {
   id: string;
