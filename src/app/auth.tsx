@@ -1,9 +1,19 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signInWithCredential 
+} from 'firebase/auth';
+import * as WebBrowser from 'expo-web-browser';
+import * as Google from 'expo-auth-session/providers/google';
 import { auth } from '@/lib/firebase';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -13,6 +23,61 @@ export default function AuthScreen() {
   const [agreeToToS, setAgreeToToS] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
+    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
+    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { id_token } = response.params;
+      if (id_token) {
+        setLoading(true);
+        const credential = GoogleAuthProvider.credential(id_token);
+        signInWithCredential(auth, credential)
+          .catch((err) => {
+            console.error(err);
+            setError(err.message || 'Google authentication failed.');
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      }
+    }
+  }, [response]);
+
+  const handleGoogleSignIn = async () => {
+    setError('');
+    if (!isLogin && !agreeToToS) {
+      setError('You must agree to the Terms of Service to sign up.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (Platform.OS === 'web') {
+        const provider = new GoogleAuthProvider();
+        await signInWithPopup(auth, provider);
+      } else {
+        if (promptAsync) {
+          await promptAsync();
+        } else {
+          setError('Google Sign-In is initializing...');
+        }
+      }
+    } catch (e: any) {
+      console.error(e);
+      if (e.code === 'auth/popup-closed-by-user') {
+        // User closed popup, no error needed
+      } else {
+        setError(e.message || 'Google sign-in failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuth = async () => {
     setError('');
@@ -42,14 +107,13 @@ export default function AuthScreen() {
       }
     } catch (e: any) {
       console.error(e);
-      // Friendly messages for Firebase errors
       if (e.code === 'auth/email-already-in-use') {
         setError('That email address is already in use.');
       } else if (e.code === 'auth/invalid-email') {
         setError('Invalid email address.');
       } else if (e.code === 'auth/weak-password') {
         setError('Password must be at least 6 characters.');
-      } else if (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found') {
+      } else if (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
         setError('Invalid email or password.');
       } else {
         setError(e.message || 'Authentication failed.');
@@ -72,6 +136,26 @@ export default function AuthScreen() {
           <Text style={styles.cardTitle}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
           
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+          {/* Google Sign-in Button */}
+          <TouchableOpacity 
+            style={[styles.googleButton, (!isLogin && !agreeToToS) && styles.googleButtonDisabled]} 
+            onPress={handleGoogleSignIn}
+            disabled={loading || (!isLogin && !agreeToToS)}
+          >
+            <View style={styles.googleIconContainer}>
+              <Text style={styles.googleIconText}>G</Text>
+            </View>
+            <Text style={styles.googleButtonText}>
+              {isLogin ? 'Continue with Google' : 'Sign up with Google'}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>OR</Text>
+            <View style={styles.dividerLine} />
+          </View>
 
           <Text style={styles.label}>Email Address</Text>
           <TextInput
@@ -133,7 +217,7 @@ export default function AuthScreen() {
             {loading ? (
               <ActivityIndicator color={Colors.text} />
             ) : (
-              <Text style={styles.authButtonText}>{isLogin ? 'Sign In' : 'Sign Up'}</Text>
+              <Text style={styles.authButtonText}>{isLogin ? 'Sign In with Email' : 'Sign Up with Email'}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -167,11 +251,11 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: Spacing.xl * 1.5,
+    marginBottom: Spacing.xl,
   },
   logo: {
-    fontSize: 64,
-    marginBottom: Spacing.sm,
+    fontSize: 56,
+    marginBottom: Spacing.xs,
   },
   appName: {
     fontSize: FontSize.xxl,
@@ -195,7 +279,55 @@ const styles = StyleSheet.create({
     fontSize: FontSize.xl,
     fontWeight: 'bold',
     color: Colors.text,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.xs,
+  },
+  googleButtonDisabled: {
+    opacity: 0.5,
+  },
+  googleIconContainer: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#4285F4',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.sm,
+  },
+  googleIconText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  googleButtonText: {
+    color: '#1f2937',
+    fontSize: FontSize.md,
+    fontWeight: '600',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: Spacing.lg,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: Colors.surfaceLight,
+  },
+  dividerText: {
+    color: Colors.textTertiary || '#64748b',
+    paddingHorizontal: Spacing.md,
+    fontSize: FontSize.xs,
+    fontWeight: 'bold',
   },
   label: {
     color: Colors.textSecondary,
@@ -203,7 +335,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     fontWeight: '600',
     marginBottom: Spacing.xs,
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
   },
   input: {
     backgroundColor: Colors.background,
@@ -223,7 +355,7 @@ const styles = StyleSheet.create({
   tosRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: Spacing.lg,
+    marginTop: Spacing.md,
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
     backgroundColor: Colors.background,
@@ -253,7 +385,7 @@ const styles = StyleSheet.create({
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
-    marginTop: Spacing.xl,
+    marginTop: Spacing.lg,
   },
   authButtonDisabled: {
     opacity: 0.5,
@@ -265,8 +397,8 @@ const styles = StyleSheet.create({
   },
   toggleButton: {
     alignItems: 'center',
-    marginTop: Spacing.xl,
-    padding: Spacing.md,
+    marginTop: Spacing.lg,
+    padding: Spacing.sm,
   },
   toggleText: {
     color: Colors.primary,

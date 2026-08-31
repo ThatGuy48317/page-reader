@@ -45,7 +45,7 @@ export default function ProcessingScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/(tabs)/')} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.push('/(tabs)')} style={styles.backButton}>
           <Text style={styles.backButtonText}>← Library</Text>
         </TouchableOpacity>
       </View>
