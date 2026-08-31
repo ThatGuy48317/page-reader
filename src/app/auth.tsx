@@ -24,10 +24,15 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Fallback client IDs to prevent runtime crashes if env vars are not set
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
+  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
+
   const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || undefined,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || undefined,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || undefined,
+    androidClientId,
+    iosClientId,
+    webClientId,
   });
 
   useEffect(() => {
@@ -61,6 +66,11 @@ export default function AuthScreen() {
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
       } else {
+        if (!process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID && Platform.OS === 'android') {
+          setError('Google Sign-In on Android requires an OAuth Client ID in .env. For quick testing, use Email/Password sign-in.');
+          setLoading(false);
+          return;
+        }
         if (promptAsync) {
           await promptAsync();
         } else {
@@ -69,9 +79,7 @@ export default function AuthScreen() {
       }
     } catch (e: any) {
       console.error(e);
-      if (e.code === 'auth/popup-closed-by-user') {
-        // User closed popup, no error needed
-      } else {
+      if (e.code !== 'auth/popup-closed-by-user') {
         setError(e.message || 'Google sign-in failed.');
       }
     } finally {
