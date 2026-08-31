@@ -148,9 +148,9 @@ export default function AuthScreen() {
 
           {/* Google Sign-in Button */}
           <TouchableOpacity 
-            style={[styles.googleButton, (!isLogin && !agreeToToS) && styles.googleButtonDisabled]} 
+            style={styles.googleButton} 
             onPress={handleGoogleSignIn}
-            disabled={loading || (!isLogin && !agreeToToS)}
+            disabled={loading}
           >
             <View style={styles.googleIconContainer}>
               <GoogleLogo size={20} />
@@ -219,9 +219,9 @@ export default function AuthScreen() {
           )}
 
           <TouchableOpacity 
-            style={[styles.authButton, (!isLogin && !agreeToToS) && styles.authButtonDisabled]} 
+            style={styles.authButton} 
             onPress={handleAuth}
-            disabled={loading || (!isLogin && !agreeToToS)}
+            disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color={Colors.text} />
