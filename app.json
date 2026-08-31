@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "PageReader",
-    "slug": "page-reader",
+    "name": "PaperEcho",
+    "slug": "paperecho",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "pagereader",
+    "scheme": "paperecho",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pagereader.app",
+      "bundleIdentifier": "com.paperecho.app",
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
@@ -21,7 +21,7 @@
         "backgroundColor": "#0f172a",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "package": "com.pagereader.app"
+      "package": "com.paperecho.app"
     },
     "web": {
       "output": "static",
@@ -32,15 +32,15 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow PageReader to access your camera to record book pages.",
-          "microphonePermission": "Allow PageReader to access your microphone.",
+          "cameraPermission": "Allow PaperEcho to access your camera to record book pages.",
+          "microphonePermission": "Allow PaperEcho to access your microphone.",
           "recordAudioAndroid": true
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "Allow PageReader to access your photo library to select book videos."
+          "photosPermission": "Allow PaperEcho to access your photo library to select book videos."
         }
       ],
       [

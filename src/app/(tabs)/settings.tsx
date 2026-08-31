@@ -13,7 +13,7 @@ export default function SettingsScreen() {
   useEffect(() => {
     const loadVoice = async () => {
       try {
-        const stored = await AsyncStorage.getItem('pagereader_default_voice');
+        const stored = await AsyncStorage.getItem('paperecho_default_voice');
         if (stored) {
           setSelectedVoice(stored);
         }
@@ -27,7 +27,7 @@ export default function SettingsScreen() {
   const handleSelectVoice = async (voiceId: string) => {
     setSelectedVoice(voiceId);
     try {
-      await AsyncStorage.setItem('pagereader_default_voice', voiceId);
+      await AsyncStorage.setItem('paperecho_default_voice', voiceId);
     } catch (e) {
       console.error('Failed to save default voice', e);
     }
@@ -69,7 +69,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.versionText}>PageReader v1.0.0</Text>
+          <Text style={styles.versionText}>PaperEcho v1.0.0</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

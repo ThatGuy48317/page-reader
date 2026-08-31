@@ -137,8 +137,8 @@ export default function AuthScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.logo}>📖</Text>
-          <Text style={styles.appName}>PageReader</Text>
-          <Text style={styles.appSubtitle}>Turn your books into personal audiobooks</Text>
+          <Text style={styles.appName}>PaperEcho</Text>
+          <Text style={styles.appSubtitle}>Turn physical books into personal audiobooks</Text>
         </View>
 
         <View style={styles.card}>

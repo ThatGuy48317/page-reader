@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Book, ProcessingStep } from '../types/book';
 
-const KEY_PREFIX = 'pagereader_book_';
+const KEY_PREFIX = 'paperecho_book_';
 
 export async function saveBook(book: Book): Promise<void> {
   try {
