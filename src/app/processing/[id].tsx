@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Book, ProcessingStep } from '@/types/book';
 
@@ -21,7 +21,7 @@ export default function ProcessingScreen() {
 
   useEffect(() => {
     if (!id) return;
-    const unsubscribe = onSnapshot(doc(db, 'books', id as string), (snapshot) => {
+    const unsubscribe = onSnapshot(doc(db, 'users', auth.currentUser?.uid || 'anon', 'books', id as string), (snapshot) => {
       if (snapshot.exists()) {
         setBook({ id: snapshot.id, ...snapshot.data() } as Book);
       }

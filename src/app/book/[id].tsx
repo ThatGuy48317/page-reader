@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions } from '@/lib/firebase';
+import { db, functions, auth } from '@/lib/firebase';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Book, Chapter } from '@/types/book';
@@ -35,7 +35,7 @@ export default function BookPlayerScreen() {
   useEffect(() => {
     const fetchBook = async () => {
       if (!id) return;
-      const docRef = doc(db, 'books', id as string);
+      const docRef = doc(db, 'users', auth.currentUser?.uid || 'anon', 'books', id as string);
       const snap = await getDoc(docRef);
       if (snap.exists()) {
         const bookData = snap.data() as Book;
@@ -68,7 +68,7 @@ export default function BookPlayerScreen() {
     if (isReprocessing) return;
     setIsReprocessing(true);
     try {
-      const docRef = doc(db, 'books', book.id);
+      const docRef = doc(db, 'users', auth.currentUser?.uid || 'anon', 'books', book.id);
       await updateDoc(docRef, {
         status: 'extracting',
         progress: 10,

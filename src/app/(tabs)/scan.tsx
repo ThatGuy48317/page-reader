@@ -82,9 +82,8 @@ export default function ScanScreen() {
           setIsUploading(false);
         },
         async () => {
-          const docRef = await addDoc(collection(db, 'books'), {
+          const docRef = await addDoc(collection(db, 'users', auth.currentUser?.uid || 'anon', 'books'), {
             title,
-            userId: auth.currentUser?.uid || 'anon',
             status: 'uploading',
             voiceName: selectedVoice,
             documentType,
