@@ -12,6 +12,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { auth } from '@/lib/firebase';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { GoogleLogo } from '@/components/GoogleLogo';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -152,7 +153,7 @@ export default function AuthScreen() {
             disabled={loading || (!isLogin && !agreeToToS)}
           >
             <View style={styles.googleIconContainer}>
-              <Text style={styles.googleIconText}>G</Text>
+              <GoogleLogo size={20} />
             </View>
             <Text style={styles.googleButtonText}>
               {isLogin ? 'Continue with Google' : 'Sign up with Google'}
@@ -303,18 +304,9 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   googleIconContainer: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#4285F4',
-    alignItems: 'center',
-    justifyContent: 'center',
     marginRight: Spacing.sm,
-  },
-  googleIconText: {
-    color: '#ffffff',
-    fontWeight: 'bold',
-    fontSize: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   googleButtonText: {
     color: '#1f2937',
