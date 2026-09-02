@@ -178,9 +178,12 @@ export const processVideo = onCall(
       // ── Step 3: Upload video to Gemini Files API ──
       await updateStatus(userId, bookId, "extracting", 20);
 
+      const isMov = videoPath.toLowerCase().endsWith(".mov");
+      const videoMime = isMov ? "video/quicktime" : "video/mp4";
+
       const uploadedFile = await ai.files.upload({
-        file: new Blob([videoBuffer], { type: "video/mp4" }),
-        config: { mimeType: "video/mp4" },
+        file: new Blob([videoBuffer], { type: videoMime }),
+        config: { mimeType: videoMime },
       });
 
       // Poll until file is active
@@ -208,7 +211,7 @@ export const processVideo = onCall(
               {
                 fileData: {
                   fileUri: fileState.uri!,
-                  mimeType: "video/mp4",
+                  mimeType: fileState.mimeType || videoMime,
                 },
               },
               {
@@ -472,7 +475,6 @@ ${rawText.substring(0, 3000)}`,
             },
           ],
           config: {
-            systemInstruction: "Read in a warm, clear, informative, and authoritative warning announcement tone.",
             responseModalities: ["AUDIO"],
             speechConfig: {
               voiceConfig: {
@@ -506,7 +508,6 @@ ${rawText.substring(0, 3000)}`,
             },
           ],
           config: {
-            systemInstruction: ttsSystemInstruction,
             responseModalities: ["AUDIO"],
             speechConfig: {
               voiceConfig: {

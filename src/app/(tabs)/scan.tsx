@@ -127,13 +127,15 @@ export default function ScanScreen() {
             progress: 10,
           });
           
-          const processVideoFn = httpsCallable(functions, 'processVideo');
+          const processVideoFn = httpsCallable(functions, 'processVideo', { timeout: 600000 });
           processVideoFn({ 
             bookId: docRef.id,
             videoPath: filename,
             voiceName: selectedVoice,
             documentType,
-          }).catch(console.error);
+          }).catch((err) => {
+            console.error('processVideo background execution error:', err);
+          });
 
           setIsUploading(false);
           setMode('idle');
@@ -256,7 +258,7 @@ export default function ScanScreen() {
           {isUploading ? (
             <View style={styles.uploadingContainer}>
               <ActivityIndicator color={Colors.text} style={{ marginRight: 8 }} />
-              <Text style={styles.processButtonText}>Uploading {Math.min(100, Math.max(0, Math.round(uploadProgress)))}%</Text>
+              <Text style={styles.processButtonText}>Uploading Video...</Text>
             </View>
           ) : (
             <Text style={styles.processButtonText}>Process This Book</Text>
