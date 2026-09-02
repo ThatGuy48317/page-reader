@@ -427,6 +427,31 @@ ${rawText.substring(0, 3000)}`,
         })),
       });
 
+      // Resolve voice (Auto-Match pairs voice with book style)
+      let resolvedVoice = voiceName;
+      if (!resolvedVoice || resolvedVoice === "auto") {
+        switch (targetStyle) {
+          case "fiction":
+            resolvedVoice = "Kore";
+            break;
+          case "nonfiction":
+            resolvedVoice = "Charon";
+            break;
+          case "academic":
+            resolvedVoice = "Algenib";
+            break;
+          case "poetry":
+            resolvedVoice = "Aoede";
+            break;
+          case "children":
+            resolvedVoice = "Zephyr";
+            break;
+          default:
+            resolvedVoice = "Kore";
+            break;
+        }
+      }
+
       // ── Step 6: Generate TTS audio in chunks ──
       // Remove chapter markers from text for TTS
       const ttsText = cleanText.replace(/\[CHAPTER:\s*.+?\]/g, "").trim();
@@ -452,7 +477,7 @@ ${rawText.substring(0, 3000)}`,
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: voiceName,
+                  voiceName: resolvedVoice,
                 },
               },
             },
@@ -486,7 +511,7 @@ ${rawText.substring(0, 3000)}`,
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
-                  voiceName: voiceName,
+                  voiceName: resolvedVoice,
                 },
               },
             },
@@ -532,7 +557,7 @@ ${rawText.substring(0, 3000)}`,
           contentType: "audio/wav",
           metadata: {
             bookId,
-            voiceName,
+            voiceName: resolvedVoice,
             generatedAt: new Date().toISOString(),
           },
         },
@@ -556,6 +581,7 @@ ${rawText.substring(0, 3000)}`,
       const expiresAt = Date.now() + DEFAULT_RETENTION_DAYS * 24 * 60 * 60 * 1000;
       await updateStatus(userId, bookId, "ready", 100, {
         audioUri: audioPath,
+        voiceName: resolvedVoice,
         duration: Math.round(totalAudioDuration),
         chapters: chaptersWithTimes,
         expiresAt,

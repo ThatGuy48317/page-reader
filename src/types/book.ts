@@ -29,4 +29,6 @@ export interface Voice {
   name: string;
   description: string;
   gender: 'male' | 'female' | 'neutral';
+  persona?: string;
+  isAuto?: boolean;
 }

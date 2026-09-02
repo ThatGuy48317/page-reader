@@ -1,6 +1,61 @@
 import { Voice } from '../types/book';
 
-export const VOICES: Voice[] = [
+export const AUTO_VOICE: Voice = {
+  id: 'auto',
+  name: 'Auto-Match',
+  description: 'AI automatically selects the best voice based on your book’s genre (Fiction, Non-Fiction, Academic, Poetry, or Kids)',
+  gender: 'neutral',
+  persona: '✨ Smart Match',
+  isAuto: true,
+};
+
+export const FEATURED_VOICES: Voice[] = [
+  AUTO_VOICE,
+  {
+    id: 'Kore',
+    name: 'Kore',
+    description: 'Warm, expressive, and balanced — ideal for fiction and literary stories',
+    gender: 'female',
+    persona: '📖 Storyteller',
+  },
+  {
+    id: 'Puck',
+    name: 'Puck',
+    description: 'Youthful, lively, and engaging narrator for novels, memoirs, and dialogue',
+    gender: 'neutral',
+    persona: '🎭 Engaging',
+  },
+  {
+    id: 'Charon',
+    name: 'Charon',
+    description: 'Deep, resonant, and authoritative for history, biographies, and non-fiction',
+    gender: 'male',
+    persona: '🎙️ Broadcaster',
+  },
+  {
+    id: 'Algenib',
+    name: 'Algenib',
+    description: 'Crisp, confident, and scholarly for science, essays, and textbooks',
+    gender: 'male',
+    persona: '🎓 Academic',
+  },
+  {
+    id: 'Aoede',
+    name: 'Aoede',
+    description: 'Melodic, gentle, and soothing for poetry, philosophy, and relaxing reads',
+    gender: 'female',
+    persona: '🌿 Calm & Poetic',
+  },
+  {
+    id: 'Zephyr',
+    name: 'Zephyr',
+    description: 'Breezy, modern, and upbeat for children’s books and casual reading',
+    gender: 'neutral',
+    persona: '⚡ Upbeat & Kids',
+  },
+];
+
+export const ALL_VOICES: Voice[] = [
   {
     id: 'Achernar',
     name: 'Achernar',
@@ -183,4 +238,7 @@ export const VOICES: Voice[] = [
   },
 ];
 
-export const DEFAULT_VOICE = 'Kore';
+// Backwards-compatible export
+export const VOICES = ALL_VOICES;
+
+export const DEFAULT_VOICE = 'auto';

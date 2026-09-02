@@ -1,8 +1,9 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { ref, uploadBytesResumable } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -12,6 +13,7 @@ import { VOICES, DEFAULT_VOICE } from '@/constants/voices';
 import { DOCUMENT_TYPES, DEFAULT_DOCUMENT_TYPE } from '@/constants/documentTypes';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { IPAgreementModal } from '@/components/IPAgreementModal';
+import { VoiceSelector } from '@/components/VoiceSelector';
 
 export default function ScanScreen() {
   const router = useRouter();
@@ -29,6 +31,18 @@ export default function ScanScreen() {
   const [showIPModal, setShowIPModal] = useState(false);
   
   const cameraRef = useRef<any>(null);
+
+  useEffect(() => {
+    const loadDefaultVoice = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('paperecho_default_voice');
+        if (saved) setSelectedVoice(saved);
+      } catch (e) {
+        console.error('Failed to load default voice in scan', e);
+      }
+    };
+    loadDefaultVoice();
+  }, []);
 
   const handleOpenRecord = async () => {
     if (!permission?.granted) {
@@ -213,20 +227,7 @@ export default function ScanScreen() {
         />
 
         <Text style={styles.inputLabel}>Select Voice</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.voiceList}>
-          {VOICES.map(v => (
-            <TouchableOpacity 
-              key={v.id} 
-              style={[styles.voiceChip, selectedVoice === v.id && styles.voiceChipActive]}
-              onPress={() => setSelectedVoice(v.id)}
-              disabled={isUploading}
-            >
-              <Text style={[styles.voiceChipText, selectedVoice === v.id && styles.voiceChipTextActive]}>
-                {v.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <VoiceSelector compact selectedVoice={selectedVoice} onSelectVoice={setSelectedVoice} />
 
         <Text style={styles.inputLabel}>Reading Style</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.voiceList}>
