@@ -91,6 +91,27 @@ function extractChapters(text: string): Array<{ title: string; textOffset: numbe
 }
 
 /**
+ * Pre-cleans raw OCR text extracted from video frames.
+ * Reconnects broken hyphens, strips running headers/page numbers, and cleans OCR artifacts.
+ */
+function preCleanOcrText(text: string): string {
+  let cleaned = text;
+  // 1. Fix broken hyphenation across line breaks (e.g. "par-\nticularly" -> "particularly")
+  cleaned = cleaned.replace(/([a-zA-Z])-[\r\n]+([a-zA-Z])/g, '$1$2');
+
+  // 2. Remove standalone page number lines
+  cleaned = cleaned.replace(/^\s*\d{1,4}\s*$/gm, '');
+
+  // 3. Remove OCR noise artifact characters (pipes, brackets, tildes)
+  cleaned = cleaned.replace(/[|~^_]/g, '');
+
+  // 4. Normalize line breaks: convert \r\n to \n and squash excessive newlines
+  cleaned = cleaned.replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n');
+
+  return cleaned.trim();
+}
+
+/**
  * Updates the Firestore document with the current processing status.
  */
 async function updateStatus(
@@ -191,18 +212,29 @@ export const processVideo = onCall(
                 },
               },
               {
-                text: `You are an expert OCR system. Extract ALL visible text from every page shown in this video.
-This is a video of someone slowly turning through the pages of a book.
+                text: `You are an expert OCR and book transcription system. Extract ALL visible text from every page shown in this video.
+This video captures someone slowly turning through the physical pages of a book.
 
-Instructions:
-- Return the text in reading order, page by page
-- Include ONLY the main body text
-- EXCLUDE: page numbers, headers, footers, endnote numbers/superscripts, decorative elements
-- Fix obvious OCR errors (broken words across lines, misread characters)
-- Ensure proper sentence flow across page boundaries
-- Mark chapter boundaries with [CHAPTER: chapter title]
-- Return clean, natural reading text with proper paragraph breaks
-- If you cannot read text on a page, skip it silently`,
+Key Instructions:
+1. PAGE DETECTION & MOTION:
+   - Identify each distinct, settled page spread as it becomes stationary. Ignore blurry transition frames, hands, or pages in mid-turn.
+   - Transcribe each settled page completely in sequential reading order. Do NOT summarize or skip any paragraphs.
+   
+2. DEDUPLICATION:
+   - When the camera dwells on a page across several seconds, output that page's text only ONCE. Do NOT repeat sentences or paragraphs.
+   
+3. LINE BREAKS & HYPHENATION:
+   - Rejoin hyphenated words broken across line breaks (e.g. "dis-" on one line and "cover" on the next must become "discover").
+   - Connect sentences that begin at the bottom of one page and finish at the top of the next page into seamless, continuous text.
+
+4. EXCLUSIONS:
+   - Exclude running headers (e.g. recurring book title or chapter title at the top margin of pages).
+   - Exclude standalone page numbers and footnote reference markers.
+   - Exclude decorative publisher ornaments.
+
+5. FORMATTING:
+   - Separate distinct paragraphs with double newlines.
+   - Mark chapter starts or major section titles with [CHAPTER: Chapter Title].`,
               },
             ],
           },
@@ -325,8 +357,11 @@ Rules:
           break;
       }
 
-      // ── Step 6: Clean the extracted text ──
+      // ── Step 6: Clean and refine the extracted text ──
       await updateStatus(userId, bookId, "extracting", 60);
+
+      // Pre-clean line breaks, hyphens, and noise artifacts
+      const preCleanedText = preCleanOcrText(rawText);
 
       const cleaningResponse = await ai.models.generateContent({
         model: "gemini-3.6-flash",
@@ -338,14 +373,14 @@ Rules:
                 text: `${cleaningPrompt}
 
 Text to clean:
-${rawText}`,
+${preCleanedText}`,
               },
             ],
           },
         ],
       });
 
-      const cleanText = cleaningResponse.text || rawText;
+      const cleanText = preCleanOcrText(cleaningResponse.text || preCleanedText);
 
       // Extract chapters from the cleaned text
       const chapters = extractChapters(cleanText);
