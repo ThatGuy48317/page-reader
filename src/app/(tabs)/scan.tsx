@@ -106,8 +106,11 @@ export default function ScanScreen() {
       
       uploadTask.on('state_changed', 
         (snapshot) => {
-          const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-          setUploadProgress(progress);
+          if (snapshot.totalBytes > 0) {
+            const rawProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            const clamped = Math.min(100, Math.max(0, Math.round(rawProgress)));
+            setUploadProgress(clamped);
+          }
         },
         (error) => {
           console.error('Upload failed', error);
@@ -253,7 +256,7 @@ export default function ScanScreen() {
           {isUploading ? (
             <View style={styles.uploadingContainer}>
               <ActivityIndicator color={Colors.text} style={{ marginRight: 8 }} />
-              <Text style={styles.processButtonText}>Uploading {Math.round(uploadProgress)}%</Text>
+              <Text style={styles.processButtonText}>Uploading {Math.min(100, Math.max(0, Math.round(uploadProgress)))}%</Text>
             </View>
           ) : (
             <Text style={styles.processButtonText}>Process This Book</Text>
