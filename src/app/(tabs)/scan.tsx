@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { ref, uploadBytesResumable } from 'firebase/storage';
@@ -16,6 +16,7 @@ import { IPAgreementModal } from '@/components/IPAgreementModal';
 export default function ScanScreen() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [mode, setMode] = useState<'idle' | 'camera' | 'preview'>('idle');
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -29,17 +30,34 @@ export default function ScanScreen() {
   
   const cameraRef = useRef<any>(null);
 
+  const handleOpenRecord = async () => {
+    if (!permission?.granted) {
+      const camRes = await requestPermission();
+      if (!camRes.granted) return;
+    }
+    if (!micPermission?.granted) {
+      await requestMicPermission();
+    }
+    setMode('camera');
+  };
+
   const startRecording = async () => {
     if (!cameraRef.current) return;
     setIsRecording(true);
     try {
-      const video = await cameraRef.current.recordAsync();
-      setVideoUri(video.uri);
-      setMode('preview');
+      const video = await cameraRef.current.recordAsync({
+        mute: !micPermission?.granted,
+        maxDuration: 300,
+      });
+      if (video?.uri) {
+        setVideoUri(video.uri);
+        setMode('preview');
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Recording error:', e);
+    } finally {
+      setIsRecording(false);
     }
-    setIsRecording(false);
   };
 
   const stopRecording = () => {
@@ -129,10 +147,7 @@ export default function ScanScreen() {
           
           <TouchableOpacity 
             style={styles.mainButton} 
-            onPress={() => {
-              if (!permission?.granted) requestPermission();
-              setMode('camera');
-            }}>
+            onPress={handleOpenRecord}>
             <Text style={styles.mainButtonText}>📹 Record Video</Text>
           </TouchableOpacity>
           
