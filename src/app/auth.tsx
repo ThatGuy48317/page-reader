@@ -31,9 +31,10 @@ export default function AuthScreen() {
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
 
   const [request, response, promptAsync] = Google.useAuthRequest({
+    clientId: webClientId,
+    webClientId,
     androidClientId,
     iosClientId,
-    webClientId,
   });
 
   useEffect(() => {
