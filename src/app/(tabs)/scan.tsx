@@ -170,23 +170,22 @@ export default function ScanScreen() {
     }
 
     return (
-      <View style={{ flex: 1 }}>
-        <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} mode="video" facing="back">
-          <SafeAreaView style={styles.cameraOverlay}>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setMode('idle')}>
-              <Text style={styles.closeButtonText}>✕</Text>
+      <View style={{ flex: 1, backgroundColor: '#000' }}>
+        <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} mode="video" facing="back" />
+        <SafeAreaView style={[StyleSheet.absoluteFill, styles.cameraOverlay]} pointerEvents="box-none">
+          <TouchableOpacity style={styles.closeButton} onPress={() => setMode('idle')}>
+            <Text style={styles.closeButtonText}>✕</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.recordControls}>
+            <TouchableOpacity 
+              style={[styles.recordButton, isRecording && styles.recordButtonActive]} 
+              onPress={isRecording ? stopRecording : startRecording}
+            >
+              <View style={[styles.recordButtonInner, isRecording && styles.recordButtonInnerActive]} />
             </TouchableOpacity>
-            
-            <View style={styles.recordControls}>
-              <TouchableOpacity 
-                style={[styles.recordButton, isRecording && styles.recordButtonActive]} 
-                onPress={isRecording ? stopRecording : startRecording}
-              >
-                <View style={[styles.recordButtonInner, isRecording && styles.recordButtonInnerActive]} />
-              </TouchableOpacity>
-            </View>
-          </SafeAreaView>
-        </CameraView>
+          </View>
+        </SafeAreaView>
       </View>
     );
   }

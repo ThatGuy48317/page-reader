@@ -179,7 +179,7 @@ export const processVideo = onCall(
       await updateStatus(userId, bookId, "extracting", 40);
 
       const extractionResponse = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: [
           {
             role: "user",
@@ -224,7 +224,7 @@ Instructions:
       if (documentType === "auto") {
         try {
           const classificationResponse = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3.6-flash",
             contents: [
               {
                 role: "user",
@@ -329,7 +329,7 @@ Rules:
       await updateStatus(userId, bookId, "extracting", 60);
 
       const cleaningResponse = await ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.6-flash",
         contents: [
           {
             role: "user",
@@ -355,7 +355,7 @@ ${rawText}`,
       let detectedAuthor = "Unknown Author";
       try {
         const metadataResponse = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-3.6-flash",
           contents: [
             {
               role: "user",
