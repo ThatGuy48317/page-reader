@@ -21,7 +21,14 @@
         "backgroundColor": "#0f172a",
         "foregroundImage": "./assets/images/icon.png"
       },
-      "package": "com.paperecho.app"
+      "package": "com.paperecho.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "web": {
       "output": "static",
@@ -55,11 +62,18 @@
       "expo-video",
       "expo-web-browser",
       "expo-status-bar",
-      "expo-audio"
+      "expo-audio",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "7e6c7af5-cb17-4eb7-8687-ff2ac69e9a58"
+      }
     }
   }
 }
