@@ -1,111 +1,79 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Audio } from 'expo-av';
+import { useAudioPlayer as useExpoAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 
 export function useAudioPlayer(audioUri: string | undefined) {
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(0);
   const [rate, setRateState] = useState(1.0);
-  const [isLoading, setIsLoading] = useState(false);
+  const player = useExpoAudioPlayer(audioUri ? { uri: audioUri } : null);
+  const status = useAudioPlayerStatus(player);
 
   useEffect(() => {
-    let currentSound: Audio.Sound | null = null;
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      shouldPlayInBackground: true,
+      interruptionMode: 'duckOthers',
+    }).catch(console.error);
+  }, []);
 
-    const setupAudio = async () => {
-      if (!audioUri) return;
-      
-      try {
-        setIsLoading(true);
-        await Audio.setAudioModeAsync({
-          staysActiveInBackground: true,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
-        });
-
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: audioUri },
-          { shouldPlay: false, rate },
-          (status) => {
-            if (status.isLoaded) {
-              setIsPlaying(status.isPlaying);
-              setPosition(status.positionMillis);
-              setDuration(status.durationMillis || 0);
-              
-              if (status.didJustFinish) {
-                setIsPlaying(false);
-                setPosition(0);
-              }
-            } else if (status.error) {
-              console.error('Playback Error:', status.error);
-            }
-          }
-        );
-        
-        currentSound = newSound;
-        setSound(newSound);
-      } catch (error) {
-        console.error('Error loading audio:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    setupAudio();
-
-    return () => {
-      if (currentSound) {
-        currentSound.unloadAsync();
-      }
-    };
-  }, [audioUri]);
-
-  const play = useCallback(async () => {
-    if (sound) {
-      await sound.playAsync();
+  const play = useCallback(() => {
+    try {
+      player.play();
+    } catch (e) {
+      console.error('Play error', e);
     }
-  }, [sound]);
+  }, [player]);
 
-  const pause = useCallback(async () => {
-    if (sound) {
-      await sound.pauseAsync();
+  const pause = useCallback(() => {
+    try {
+      player.pause();
+    } catch (e) {
+      console.error('Pause error', e);
     }
-  }, [sound]);
+  }, [player]);
 
-  const seekTo = useCallback(async (positionMs: number) => {
-    if (sound) {
-      await sound.setPositionAsync(positionMs);
+  const seekTo = useCallback((positionSec: number) => {
+    try {
+      player.seekTo(positionSec);
+    } catch (e) {
+      console.error('Seek error', e);
     }
-  }, [sound]);
+  }, [player]);
 
-  const skipForward = useCallback(async (seconds: number = 15) => {
-    if (sound) {
-      const newPosition = Math.min(position + seconds * 1000, duration);
-      await sound.setPositionAsync(newPosition);
+  const skipForward = useCallback((seconds: number = 15) => {
+    try {
+      const current = status.currentTime || 0;
+      const total = status.duration || 0;
+      const target = Math.min(current + seconds, total);
+      player.seekTo(target);
+    } catch (e) {
+      console.error('Skip forward error', e);
     }
-  }, [sound, position, duration]);
+  }, [player, status.currentTime, status.duration]);
 
-  const skipBack = useCallback(async (seconds: number = 15) => {
-    if (sound) {
-      const newPosition = Math.max(position - seconds * 1000, 0);
-      await sound.setPositionAsync(newPosition);
+  const skipBack = useCallback((seconds: number = 15) => {
+    try {
+      const current = status.currentTime || 0;
+      const target = Math.max(current - seconds, 0);
+      player.seekTo(target);
+    } catch (e) {
+      console.error('Skip back error', e);
     }
-  }, [sound, position]);
+  }, [player, status.currentTime]);
 
-  const setRate = useCallback(async (newRate: number) => {
-    if (sound) {
-      await sound.setRateAsync(newRate, true);
+  const setRate = useCallback((newRate: number) => {
+    try {
+      player.playbackRate = newRate;
       setRateState(newRate);
+    } catch (e) {
+      console.error('Set rate error', e);
     }
-  }, [sound]);
+  }, [player]);
 
   return {
-    isPlaying,
-    position,
-    duration,
+    isPlaying: status.playing,
+    position: status.currentTime || 0, // in seconds
+    duration: status.duration || 0,     // in seconds
     rate,
-    isLoading,
+    isLoading: !status.isLoaded || status.isBuffering,
     play,
     pause,
     seekTo,

@@ -25,9 +25,9 @@ export function AudioPlayer({ audioUri, chapters, bookTitle }: AudioPlayerProps)
     setRate,
   } = useAudioPlayer(audioUri);
 
-  const formatTime = (ms: number) => {
-    if (isNaN(ms)) return '00:00';
-    const totalSeconds = Math.floor(ms / 1000);
+  const formatTime = (sec: number) => {
+    if (isNaN(sec)) return '00:00';
+    const totalSeconds = Math.floor(sec);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
@@ -48,7 +48,7 @@ export function AudioPlayer({ audioUri, chapters, bookTitle }: AudioPlayerProps)
     if (!chapters || chapters.length === 0) return null;
     let current = chapters[0];
     for (let i = 0; i < chapters.length; i++) {
-      if (position >= (chapters[i].startTime * 1000)) {
+      if (position >= chapters[i].startTime) {
         current = chapters[i];
       } else {
         break;
@@ -131,13 +131,13 @@ export function AudioPlayer({ audioUri, chapters, bookTitle }: AudioPlayerProps)
               <TouchableOpacity 
                 key={String(index)}
                 style={[styles.chapterItem, isCurrent && styles.chapterItemActive]}
-                onPress={() => seekTo(chapter.startTime * 1000)}
+                onPress={() => seekTo(chapter.startTime)}
               >
                 <Text style={[styles.chapterItemText, isCurrent && styles.chapterItemTextActive]}>
                   {chapter.title}
                 </Text>
                 <Text style={styles.chapterItemTime}>
-                  {formatTime(chapter.startTime * 1000)}
+                  {formatTime(chapter.startTime)}
                 </Text>
               </TouchableOpacity>
             );
