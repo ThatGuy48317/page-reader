@@ -3,8 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
-import { db, functions, auth } from '@/lib/firebase';
+import { db, functions, auth, storage } from '@/lib/firebase';
 import { useAudioPlayer } from '@/hooks/useAudioPlayer';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Book, Chapter } from '@/types/book';
@@ -52,11 +53,18 @@ export default function BookPlayerScreen() {
               setPlayableUrl(bookData.audioUri);
             } else {
               setLoadingAudio(true);
-              const getBookAudioFn = httpsCallable<{ audioPath: string }, { url: string }>(functions, 'getBookAudio');
-              const res = await getBookAudioFn({ audioPath: bookData.audioUri });
-              console.log('Got signed audio URL:', res.data.url);
-              setPlayableUrl(res.data.url);
-              setLoadingAudio(false);
+              try {
+                const directUrl = await getDownloadURL(ref(storage, bookData.audioUri));
+                console.log('Got direct Firebase Storage download URL');
+                setPlayableUrl(directUrl);
+              } catch (storageErr) {
+                console.log('Direct download URL error, trying getBookAudio callable:', storageErr);
+                const getBookAudioFn = httpsCallable<{ audioPath: string }, { url: string }>(functions, 'getBookAudio');
+                const res = await getBookAudioFn({ audioPath: bookData.audioUri });
+                setPlayableUrl(res.data.url);
+              } finally {
+                setLoadingAudio(false);
+              }
             }
           }
         }
