@@ -6,7 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { ref, uploadBytesResumable } from 'firebase/storage';
+import { ref, uploadBytes } from 'firebase/storage';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { storage, db, auth, functions } from '@/lib/firebase';
@@ -98,8 +98,11 @@ export default function ScanScreen() {
     setIsUploading(true);
 
     try {
+      console.log('Reading video file from filesystem:', videoUri);
       const file = new File(videoUri);
       const bytes = await file.bytes();
+
+      console.log(`Video file read successfully: ${(bytes.length / (1024 * 1024)).toFixed(2)} MB`);
 
       if (!bytes || bytes.length < 1000) {
         throw new Error(`Video file is empty or could not be read (${bytes?.length || 0} bytes).`);
@@ -110,51 +113,38 @@ export default function ScanScreen() {
       const filename = `users/${auth.currentUser?.uid || 'anon'}/videos/${Date.now()}.${ext}`;
       const storageRef = ref(storage, filename);
       
-      const uploadTask = uploadBytesResumable(storageRef, bytes, { contentType: mimeType });
-      
-      uploadTask.on('state_changed', 
-        (snapshot) => {
-          if (snapshot.totalBytes > 0) {
-            const rawProgress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-            const clamped = Math.min(100, Math.max(0, Math.round(rawProgress)));
-            setUploadProgress(clamped);
-          }
-        },
-        (error) => {
-          console.error('Upload failed', error);
-          setIsUploading(false);
-        },
-        async () => {
-          const docRef = await addDoc(collection(db, 'users', auth.currentUser?.uid || 'anon', 'books'), {
-            title,
-            status: 'uploading',
-            voiceName: selectedVoice,
-            documentType,
-            createdAt: serverTimestamp(),
-            videoUri: filename,
-            progress: 10,
-          });
-          
-          const processVideoFn = httpsCallable(functions, 'processVideo', { timeout: 600000 });
-          processVideoFn({ 
-            bookId: docRef.id,
-            videoPath: filename,
-            voiceName: selectedVoice,
-            documentType,
-          }).catch((err) => {
-            console.error('processVideo background execution error:', err);
-          });
+      console.log('Starting direct upload to Firebase Storage:', filename);
+      await uploadBytes(storageRef, bytes, { contentType: mimeType });
+      console.log('Upload to Firebase Storage complete!');
 
-          setIsUploading(false);
-          setMode('idle');
-          setTitle('');
-          setVideoUri(null);
-          setUploadProgress(0);
-          router.push(`/processing/${docRef.id}`);
-        }
-      );
+      const docRef = await addDoc(collection(db, 'users', auth.currentUser?.uid || 'anon', 'books'), {
+        title,
+        status: 'uploading',
+        voiceName: selectedVoice,
+        documentType,
+        createdAt: serverTimestamp(),
+        videoUri: filename,
+        progress: 10,
+      });
+      
+      const processVideoFn = httpsCallable(functions, 'processVideo', { timeout: 600000 });
+      processVideoFn({ 
+        bookId: docRef.id,
+        videoPath: filename,
+        voiceName: selectedVoice,
+        documentType,
+      }).catch((err) => {
+        console.error('processVideo background execution error:', err);
+      });
+
+      setIsUploading(false);
+      setMode('idle');
+      setTitle('');
+      setVideoUri(null);
+      setUploadProgress(0);
+      router.push(`/processing/${docRef.id}`);
     } catch (error) {
-      console.error(error);
+      console.error('Upload & process error:', error);
       setIsUploading(false);
     }
   };
