@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -304,78 +304,87 @@ export default function ScanScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.previewContent} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity 
-          style={styles.backButton} 
-          onPress={() => setMode('idle')} 
-          disabled={isUploading}
-          activeOpacity={0.7}
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.previewContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <Ionicons name="arrow-back" size={18} color={Colors.textSecondary} style={{ marginRight: 6 }} />
-          <Text style={styles.backButtonText}>Back to Scan</Text>
-        </TouchableOpacity>
-        
-        <Text style={styles.sectionTitle}>Recording Ready</Text>
+          <TouchableOpacity 
+            style={styles.backButton} 
+            onPress={() => setMode('idle')} 
+            disabled={isUploading}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="arrow-back" size={18} color={Colors.textSecondary} style={{ marginRight: 6 }} />
+            <Text style={styles.backButtonText}>Back to Scan</Text>
+          </TouchableOpacity>
+          
+          <Text style={styles.sectionTitle}>Recording Ready</Text>
 
-        <View style={styles.videoCard}>
-          <Ionicons name="film-outline" size={28} color={Colors.primary} style={{ marginRight: 12 }} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.videoCardTitle}>Video Captured</Text>
-            <Text style={styles.videoCardSubtitle}>Ready to transcribe and synthesize</Text>
+          <View style={styles.videoCard}>
+            <Ionicons name="film-outline" size={28} color={Colors.primary} style={{ marginRight: 12 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.videoCardTitle}>Video Captured</Text>
+              <Text style={styles.videoCardSubtitle}>Ready to transcribe and synthesize</Text>
+            </View>
+            <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
           </View>
-          <Ionicons name="checkmark-circle" size={20} color={Colors.success} />
-        </View>
 
-        <Text style={styles.inputLabel}>Book Title</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="e.g., Dune by Frank Herbert"
-          placeholderTextColor={Colors.textTertiary}
-          value={title}
-          onChangeText={setTitle}
-          editable={!isUploading}
-        />
+          <Text style={styles.inputLabel}>Book Title</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="e.g., Dune by Frank Herbert"
+            placeholderTextColor={Colors.textTertiary}
+            value={title}
+            onChangeText={setTitle}
+            editable={!isUploading}
+          />
 
-        <Text style={styles.inputLabel}>Narrator Voice</Text>
-        <VoiceSelector compact selectedVoice={selectedVoice} onSelectVoice={setSelectedVoice} />
+          <Text style={styles.inputLabel}>Narrator Voice</Text>
+          <VoiceSelector compact selectedVoice={selectedVoice} onSelectVoice={setSelectedVoice} />
 
-        <Text style={[styles.inputLabel, { marginTop: 16 }]}>Reading Style & Tone</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.voiceList}>
-          {DOCUMENT_TYPES.map(type => (
-            <TouchableOpacity 
-              key={type.id} 
-              style={[styles.voiceChip, documentType === type.id && styles.voiceChipActive]}
-              onPress={() => setDocumentType(type.id)}
-              disabled={isUploading}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.chipEmoji}>{type.emoji}</Text>
-              <Text style={[styles.voiceChipText, documentType === type.id && styles.voiceChipTextActive]}>
-                {type.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          <Text style={[styles.inputLabel, { marginTop: 16 }]}>Reading Style & Tone</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.voiceList}>
+            {DOCUMENT_TYPES.map(type => (
+              <TouchableOpacity 
+                key={type.id} 
+                style={[styles.voiceChip, documentType === type.id && styles.voiceChipActive]}
+                onPress={() => setDocumentType(type.id)}
+                disabled={isUploading}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.chipEmoji}>{type.emoji}</Text>
+                <Text style={[styles.voiceChipText, documentType === type.id && styles.voiceChipTextActive]}>
+                  {type.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+
+          <TouchableOpacity 
+            style={[styles.processButton, (!title || isUploading) && styles.processButtonDisabled]} 
+            onPress={handleProcessPress}
+            disabled={!title || isUploading}
+            activeOpacity={0.85}
+          >
+            {isUploading ? (
+              <View style={styles.uploadingContainer}>
+                <ActivityIndicator color="#000000" style={{ marginRight: 8 }} />
+                <Text style={styles.processButtonText}>Uploading Video...</Text>
+              </View>
+            ) : (
+              <View style={styles.uploadingContainer}>
+                <Ionicons name="sparkles" size={18} color="#000000" style={{ marginRight: 8 }} />
+                <Text style={styles.processButtonText}>Generate Audiobook</Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </ScrollView>
-
-        <TouchableOpacity 
-          style={[styles.processButton, (!title || isUploading) && styles.processButtonDisabled]} 
-          onPress={handleProcessPress}
-          disabled={!title || isUploading}
-          activeOpacity={0.85}
-        >
-          {isUploading ? (
-            <View style={styles.uploadingContainer}>
-              <ActivityIndicator color="#000000" style={{ marginRight: 8 }} />
-              <Text style={styles.processButtonText}>Uploading Video...</Text>
-            </View>
-          ) : (
-            <View style={styles.uploadingContainer}>
-              <Ionicons name="sparkles" size={18} color="#000000" style={{ marginRight: 8 }} />
-              <Text style={styles.processButtonText}>Generate Audiobook</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </ScrollView>
+      </KeyboardAvoidingView>
 
       <IPAgreementModal 
         visible={showIPModal}
