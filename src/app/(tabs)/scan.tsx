@@ -99,7 +99,8 @@ export default function ScanScreen() {
     try {
       const response = await fetch(videoUri);
       const blob = await response.blob();
-      const filename = `users/${auth.currentUser?.uid || 'anon'}/videos/${Date.now()}.mov`;
+      const ext = videoUri.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
+      const filename = `users/${auth.currentUser?.uid || 'anon'}/videos/${Date.now()}.${ext}`;
       const storageRef = ref(storage, filename);
       
       const uploadTask = uploadBytesResumable(storageRef, blob);

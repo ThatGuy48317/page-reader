@@ -3,6 +3,9 @@ import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { GoogleGenAI } from "@google/genai";
 import { defineSecret } from "firebase-functions/params";
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
 
 admin.initializeApp();
 
@@ -173,16 +176,18 @@ export const processVideo = onCall(
 
       // ── Step 2: Download video from Firebase Storage ──
       const file = bucket.file(videoPath);
-      const [videoBuffer] = await file.download();
+      const isMov = videoPath.toLowerCase().endsWith(".mov");
+      const ext = isMov ? "mov" : "mp4";
+      const videoMime = isMov ? "video/quicktime" : "video/mp4";
+      const tempFilePath = path.join(os.tmpdir(), `${bookId}_${Date.now()}.${ext}`);
+
+      await file.download({ destination: tempFilePath });
 
       // ── Step 3: Upload video to Gemini Files API ──
       await updateStatus(userId, bookId, "extracting", 20);
 
-      const isMov = videoPath.toLowerCase().endsWith(".mov");
-      const videoMime = isMov ? "video/quicktime" : "video/mp4";
-
       const uploadedFile = await ai.files.upload({
-        file: new Blob([videoBuffer], { type: videoMime }),
+        file: tempFilePath,
         config: { mimeType: videoMime },
       });
 
@@ -193,6 +198,15 @@ export const processVideo = onCall(
         await new Promise((r) => setTimeout(r, 3000));
         fileState = await ai.files.get({ name: uploadedFile.name! });
         pollCount++;
+      }
+
+      // Cleanup local temp file once uploaded to Gemini
+      try {
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+      } catch (cleanupErr) {
+        console.warn("Failed to delete temp video file:", cleanupErr);
       }
 
       if (fileState.state !== "ACTIVE") {
