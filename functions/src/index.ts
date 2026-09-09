@@ -169,67 +169,85 @@ export const processVideo = onCall(
     const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
 
     try {
-      // ── Step 1: Update status to extracting ──
-      await updateStatus(userId, bookId, "extracting", 10, {
-        documentType,
-      });
+      // ── Step 1: Check if text is already extracted for re-narration ──
+      let rawText = "";
+      let uploadedFileName: string | undefined = undefined;
+      const bookDocSnap = await db
+        .collection("users")
+        .doc(userId)
+        .collection("books")
+        .doc(bookId)
+        .get();
+      const existingBookData = bookDocSnap.data();
+      const existingText = existingBookData?.extractedText;
 
-      // ── Step 2: Download video from Firebase Storage ──
-      const file = bucket.file(videoPath);
-      const isMov = videoPath.toLowerCase().endsWith(".mov");
-      const ext = isMov ? "mov" : "mp4";
-      const videoMime = isMov ? "video/quicktime" : "video/mp4";
-      const tempFilePath = path.join(os.tmpdir(), `${bookId}_${Date.now()}.${ext}`);
+      if (existingText && typeof existingText === "string" && existingText.trim().length >= 50) {
+        console.log(`Re-narration: Reusing ${existingText.length} characters of existing text for book ${bookId}`);
+        rawText = existingText;
+        await updateStatus(userId, bookId, "extracting", 40, { documentType });
+      } else {
+        // ── Step 1b: Update status to extracting ──
+        await updateStatus(userId, bookId, "extracting", 10, {
+          documentType,
+        });
 
-      await file.download({ destination: tempFilePath });
+        // ── Step 2: Download video from Firebase Storage ──
+        const file = bucket.file(videoPath);
+        const isMov = videoPath.toLowerCase().endsWith(".mov");
+        const ext = isMov ? "mov" : "mp4";
+        const videoMime = isMov ? "video/quicktime" : "video/mp4";
+        const tempFilePath = path.join(os.tmpdir(), `${bookId}_${Date.now()}.${ext}`);
 
-      // ── Step 3: Upload video to Gemini Files API ──
-      await updateStatus(userId, bookId, "extracting", 20);
+        await file.download({ destination: tempFilePath });
 
-      const uploadedFile = await ai.files.upload({
-        file: tempFilePath,
-        config: { mimeType: videoMime },
-      });
+        // ── Step 3: Upload video to Gemini Files API ──
+        await updateStatus(userId, bookId, "extracting", 20);
 
-      // Poll until file is active
-      let fileState = await ai.files.get({ name: uploadedFile.name! });
-      let pollCount = 0;
-      while (fileState.state === "PROCESSING" && pollCount < 60) {
-        await new Promise((r) => setTimeout(r, 3000));
-        fileState = await ai.files.get({ name: uploadedFile.name! });
-        pollCount++;
-      }
+        const uploadedFile = await ai.files.upload({
+          file: tempFilePath,
+          config: { mimeType: videoMime },
+        });
+        uploadedFileName = uploadedFile.name;
 
-      // Cleanup local temp file once uploaded to Gemini
-      try {
-        if (fs.existsSync(tempFilePath)) {
-          fs.unlinkSync(tempFilePath);
+        // Poll until file is active
+        let fileState = await ai.files.get({ name: uploadedFile.name! });
+        let pollCount = 0;
+        while (fileState.state === "PROCESSING" && pollCount < 60) {
+          await new Promise((r) => setTimeout(r, 3000));
+          fileState = await ai.files.get({ name: uploadedFile.name! });
+          pollCount++;
         }
-      } catch (cleanupErr) {
-        console.warn("Failed to delete temp video file:", cleanupErr);
-      }
 
-      if (fileState.state !== "ACTIVE") {
-        throw new Error(`File processing failed. State: ${fileState.state}`);
-      }
+        // Cleanup local temp file once uploaded to Gemini
+        try {
+          if (fs.existsSync(tempFilePath)) {
+            fs.unlinkSync(tempFilePath);
+          }
+        } catch (cleanupErr) {
+          console.warn("Failed to delete temp video file:", cleanupErr);
+        }
 
-      // ── Step 4: Extract text via Gemini Video Understanding ──
-      await updateStatus(userId, bookId, "extracting", 40);
+        if (fileState.state !== "ACTIVE") {
+          throw new Error(`File processing failed. State: ${fileState.state}`);
+        }
 
-      const extractionResponse = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                fileData: {
-                  fileUri: fileState.uri!,
-                  mimeType: fileState.mimeType || videoMime,
+        // ── Step 4: Extract text via Gemini Video Understanding ──
+        await updateStatus(userId, bookId, "extracting", 40);
+
+        const extractionResponse = await ai.models.generateContent({
+          model: "gemini-3.6-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  fileData: {
+                    fileUri: fileState.uri!,
+                    mimeType: fileState.mimeType || videoMime,
+                  },
                 },
-              },
-              {
-                text: `You are an expert OCR and book transcription system. Extract ALL visible text from every page shown in this video.
+                {
+                  text: `You are an expert OCR and book transcription system. Extract ALL visible text from every page shown in this video.
 This video captures someone slowly turning through the physical pages of a book.
 
 Key Instructions:
@@ -252,13 +270,14 @@ Key Instructions:
 5. FORMATTING:
    - Separate distinct paragraphs with double newlines.
    - Mark chapter starts or major section titles with [CHAPTER: Chapter Title].`,
-              },
-            ],
-          },
-        ],
-      });
+                },
+              ],
+            },
+          ],
+        });
 
-      const rawText = extractionResponse.text || "";
+        rawText = extractionResponse.text || "";
+      }
 
       if (!rawText || rawText.length < 50) {
         throw new Error(
@@ -603,10 +622,12 @@ ${rawText.substring(0, 3000)}`,
       });
 
       // Clean up the Gemini uploaded file
-      try {
-        await ai.files.delete({ name: uploadedFile.name! });
-      } catch {
-        // Non-critical, ignore cleanup errors
+      if (uploadedFileName) {
+        try {
+          await ai.files.delete({ name: uploadedFileName });
+        } catch {
+          // Non-critical, ignore cleanup errors
+        }
       }
 
       return {

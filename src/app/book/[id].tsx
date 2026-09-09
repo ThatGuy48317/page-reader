@@ -11,6 +11,7 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Book, Chapter } from '@/types/book';
 import { VOICES } from '@/constants/voices';
 import { DOCUMENT_TYPES } from '@/constants/documentTypes';
+import { VoiceSelector } from '@/components/VoiceSelector';
 import { savePlaybackPosition, getPlaybackPosition } from '@/lib/storage';
 import { getExpirationInfo } from '@/utils/expiration';
 
@@ -347,29 +348,23 @@ export default function BookPlayerScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Narration Settings</Text>
+              <View>
+                <Text style={styles.modalTitle}>Re-Narrate Audiobook</Text>
+                <Text style={styles.modalSubtitle}>Choose a new narrator voice & reading style</Text>
+              </View>
               <TouchableOpacity onPress={() => setShowSettings(false)} style={styles.closeBtn}>
                 <Text style={styles.closeModalText}>✕</Text>
               </TouchableOpacity>
             </View>
 
             <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalSectionLabel}>Voice</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollOptions}>
-                {VOICES.map(v => (
-                  <TouchableOpacity 
-                    key={v.id} 
-                    style={[styles.optionChip, selectedVoice === v.id && styles.optionChipActive]}
-                    onPress={() => setSelectedVoice(v.id)}
-                  >
-                    <Text style={[styles.optionChipText, selectedVoice === v.id && styles.optionChipTextActive]}>
-                      {v.gender === 'male' ? '👨' : '👩'} {v.name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+              <Text style={styles.modalSectionLabel}>Narrator Voice</Text>
+              <VoiceSelector 
+                selectedVoice={selectedVoice} 
+                onSelectVoice={setSelectedVoice} 
+              />
 
-              <Text style={styles.modalSectionLabel}>Reading Style</Text>
+              <Text style={[styles.modalSectionLabel, { marginTop: 20 }]}>Reading Style</Text>
               <View style={styles.verticalOptions}>
                 {DOCUMENT_TYPES.map(type => (
                   <TouchableOpacity 
@@ -394,7 +389,9 @@ export default function BookPlayerScreen() {
                 {isReprocessing ? (
                   <ActivityIndicator color={Colors.text} />
                 ) : (
-                  <Text style={styles.reNarrateButtonText}>Re-Narrate Audiobook 🔁</Text>
+                  <Text style={styles.reNarrateButtonText}>
+                    {selectedVoice ? `Re-Narrate with ${selectedVoice} 🔁` : 'Re-Narrate Audiobook 🔁'}
+                  </Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -775,7 +772,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContainer: {
-    height: '75%',
+    height: '85%',
     backgroundColor: '#0f172a',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -796,6 +793,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#f8fafc',
+  },
+  modalSubtitle: {
+    fontSize: 12,
+    color: '#94a3b8',
+    marginTop: 2,
   },
   closeBtn: {
     padding: 4,
