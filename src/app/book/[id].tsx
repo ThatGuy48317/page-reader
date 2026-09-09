@@ -222,8 +222,13 @@ export default function BookPlayerScreen() {
               >
                 {isAudioBuffering ? (
                   <ActivityIndicator size="small" color="#ffffff" />
+                ) : isPlaying ? (
+                  <View style={styles.pauseBarsContainer}>
+                    <View style={styles.pauseBar} />
+                    <View style={styles.pauseBar} />
+                  </View>
                 ) : (
-                  <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+                  <Text style={styles.playIcon}>▶</Text>
                 )}
               </TouchableOpacity>
 
@@ -527,6 +532,18 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 30,
     marginLeft: 3,
+  },
+  pauseBarsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+  },
+  pauseBar: {
+    width: 6,
+    height: 24,
+    backgroundColor: '#ffffff',
+    borderRadius: 3,
   },
   speedSection: {
     flexDirection: 'row',

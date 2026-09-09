@@ -61,7 +61,11 @@ export function useAudioPlayer(audioUri: string | undefined) {
 
   const setRate = useCallback((newRate: number) => {
     try {
-      player.playbackRate = newRate;
+      if (typeof (player as any).setPlaybackRate === 'function') {
+        (player as any).setPlaybackRate(newRate);
+      } else {
+        (player as any).playbackRate = newRate;
+      }
       setRateState(newRate);
     } catch (e) {
       console.error('Set rate error', e);
