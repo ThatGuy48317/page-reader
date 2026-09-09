@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/lib/firebase';
 import { VoiceSelector } from '@/components/VoiceSelector';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
@@ -45,52 +46,66 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.headerTitle}>Settings</Text>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={styles.headerSubtitle}>Preferences & Compliance</Text>
+        </View>
 
+        {/* Account Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           <View style={styles.card}>
-            <Text style={styles.label}>Email</Text>
-            <Text style={styles.value}>{auth.currentUser?.email || 'Not logged in'}</Text>
+            <View style={styles.iconCircle}>
+              <Ionicons name="person-outline" size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.accountInfo}>
+              <Text style={styles.label}>Authenticated User</Text>
+              <Text style={styles.value}>{auth.currentUser?.email || 'Anonymous Session'}</Text>
+            </View>
           </View>
         </View>
 
+        {/* Narrator Preferences */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
-          <View style={styles.card}>
-            <Text style={styles.label}>Default Voice</Text>
+          <Text style={styles.sectionTitle}>Default Narrator</Text>
+          <View style={styles.cardSection}>
             <VoiceSelector selectedVoice={selectedVoice} onSelectVoice={handleSelectVoice} />
           </View>
         </View>
 
+        {/* Legal & Compliance */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Legal & Compliance</Text>
+          <Text style={styles.sectionTitle}>Legal & Fair Use</Text>
           <TouchableOpacity 
             style={styles.legalCard}
             onPress={() => setShowTermsModal(true)}
+            activeOpacity={0.7}
           >
             <View style={styles.legalRow}>
               <View style={styles.legalIconContainer}>
-                <Text style={styles.legalIcon}>⚖️</Text>
+                <Ionicons name="shield-checkmark-outline" size={20} color={Colors.primary} />
               </View>
               <View style={styles.legalTextContainer}>
-                <Text style={styles.legalTitle}>Terms of Service & Fair Use</Text>
-                <Text style={styles.legalSubtitle}>Format shifting, 7-day retention & copyright compliance</Text>
+                <Text style={styles.legalTitle}>Terms of Service & Fair Use Policy</Text>
+                <Text style={styles.legalSubtitle}>Personal format shifting, 7-day storage purge & IP warranties</Text>
               </View>
-              <Text style={styles.chevron}>›</Text>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
             </View>
           </TouchableOpacity>
         </View>
 
+        {/* Sign Out */}
         <View style={styles.section}>
-          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.7}>
+            <Ionicons name="log-out-outline" size={18} color={Colors.error} style={{ marginRight: 8 }} />
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
-          <Text style={styles.versionText}>PaperEcho v1.0.0</Text>
+          <Text style={styles.versionText}>PaperEcho • Version 1.0.0 (Production)</Text>
+          <Text style={styles.subVersionText}>Powered by Google Gemini 3.6 Flash & Neural TTS</Text>
         </View>
       </ScrollView>
 
@@ -109,31 +124,81 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Spacing.lg,
+    paddingBottom: Spacing.xxxl,
+  },
+  header: {
+    marginBottom: Spacing.xl,
+    paddingBottom: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
   },
   headerTitle: {
     fontSize: FontSize.xxl,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: Colors.text,
-    marginBottom: Spacing.xl,
+    letterSpacing: -0.5,
+  },
+  headerSubtitle: {
+    fontSize: FontSize.xs,
+    color: Colors.textTertiary,
+    marginTop: 2,
   },
   section: {
     marginBottom: Spacing.xl,
   },
   sectionTitle: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
+    fontSize: FontSize.xxs,
+    color: Colors.textTertiary,
     textTransform: 'uppercase',
     marginBottom: Spacing.sm,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   card: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  cardSection: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  iconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: Colors.surfaceElevated,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  accountInfo: {
+    flex: 1,
+  },
+  label: {
+    fontSize: FontSize.xxs,
+    color: Colors.textTertiary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  value: {
+    fontSize: FontSize.sm,
+    color: Colors.text,
+    fontWeight: '600',
   },
   legalCard: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.md,
+    borderRadius: BorderRadius.lg,
     padding: Spacing.md,
     borderWidth: 1,
     borderColor: Colors.border,
@@ -141,66 +206,59 @@ const styles = StyleSheet.create({
   legalRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: Spacing.sm,
   },
   legalIconContainer: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    backgroundColor: Colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  legalIcon: {
-    fontSize: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   legalTextContainer: {
     flex: 1,
-    marginLeft: Spacing.xs,
+    marginHorizontal: Spacing.sm,
   },
   legalTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '600',
+    fontSize: FontSize.sm,
+    fontWeight: '700',
     color: Colors.text,
     marginBottom: 2,
   },
   legalSubtitle: {
     fontSize: FontSize.xs,
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
     lineHeight: 16,
   },
-  chevron: {
-    fontSize: FontSize.xl,
-    color: Colors.textTertiary,
-    fontWeight: 'bold',
-  },
-  label: {
-    fontSize: FontSize.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.xs,
-  },
-  value: {
-    fontSize: FontSize.md,
-    color: Colors.text,
-  },
   signOutButton: {
-    backgroundColor: Colors.surfaceLight,
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     alignItems: 'center',
-    marginTop: Spacing.lg,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.3)',
   },
   signOutText: {
     color: Colors.error,
-    fontSize: FontSize.md,
-    fontWeight: 'bold',
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
   footer: {
     alignItems: 'center',
-    marginTop: Spacing.xxl,
+    marginTop: Spacing.xl,
+    gap: 4,
   },
   versionText: {
     color: Colors.textSecondary,
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
+    fontWeight: '600',
+  },
+  subVersionText: {
+    color: Colors.textTertiary,
+    fontSize: FontSize.xxs,
   },
 });

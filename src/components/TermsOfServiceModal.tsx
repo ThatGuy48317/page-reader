@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Modal, ScrollView, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { TERMS_SECTIONS, TERMS_OF_SERVICE_VERSION, TERMS_OF_SERVICE_LAST_UPDATED } from '@/constants/termsOfService';
 
@@ -20,7 +21,7 @@ export function TermsOfServiceModal({ visible, onClose }: TermsOfServiceModalPro
               <Text style={styles.subtitle}>v{TERMS_OF_SERVICE_VERSION} • Updated {TERMS_OF_SERVICE_LAST_UPDATED}</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Text style={styles.closeButtonText}>✕</Text>
+              <Ionicons name="close" size={20} color={Colors.textSecondary} />
             </TouchableOpacity>
           </View>
 
@@ -31,6 +32,10 @@ export function TermsOfServiceModal({ visible, onClose }: TermsOfServiceModalPro
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.introCard}>
+              <View style={styles.introHeader}>
+                <Ionicons name="shield-checkmark" size={18} color={Colors.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.introHeading}>Compliance Notice</Text>
+              </View>
               <Text style={styles.introText}>
                 PaperEcho is built strictly for <Text style={styles.boldText}>personal, non-commercial format shifting</Text> of physical books you legally own. Please review our Fair Use compliance principles and terms below.
               </Text>
@@ -48,7 +53,8 @@ export function TermsOfServiceModal({ visible, onClose }: TermsOfServiceModalPro
               </View>
             ))}
 
-            <TouchableOpacity style={styles.agreeButton} onPress={onClose}>
+            <TouchableOpacity style={styles.agreeButton} onPress={onClose} activeOpacity={0.85}>
+              <Ionicons name="checkmark" size={18} color="#000000" style={{ marginRight: 6 }} />
               <Text style={styles.agreeButtonText}>I Understand & Agree</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -61,81 +67,89 @@ export function TermsOfServiceModal({ visible, onClose }: TermsOfServiceModalPro
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
     height: '85%',
-    backgroundColor: '#0f172a',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
     borderTopWidth: 1,
-    borderColor: '#334155',
-    paddingTop: 20,
-    paddingHorizontal: 20,
+    borderColor: Colors.borderLight,
+    paddingTop: Spacing.lg,
+    paddingHorizontal: Spacing.lg,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingBottom: 16,
+    paddingBottom: Spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b',
+    borderBottomColor: Colors.border,
   },
   title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#f8fafc',
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: 12,
-    color: '#94a3b8',
+    fontSize: FontSize.xs,
+    color: Colors.textTertiary,
     marginTop: 2,
   },
   closeButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#1e293b',
+    backgroundColor: Colors.surfaceElevated,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#94a3b8',
-    fontWeight: 'bold',
-  },
   scrollView: {
     flex: 1,
-    marginTop: 12,
+    marginTop: Spacing.sm,
   },
   scrollContent: {
-    paddingBottom: 40,
-    gap: 16,
+    paddingBottom: Spacing.xxxl,
+    gap: Spacing.md,
   },
   introCard: {
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
-    padding: 14,
-    borderRadius: 12,
+    backgroundColor: 'rgba(226, 179, 80, 0.08)',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: 'rgba(59, 130, 246, 0.3)',
+    borderColor: 'rgba(226, 179, 80, 0.25)',
+  },
+  introHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  introHeading: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   introText: {
-    color: '#93c5fd',
-    fontSize: 13,
-    lineHeight: 19,
+    color: '#fef3c7',
+    fontSize: FontSize.xs,
+    lineHeight: 18,
   },
   boldText: {
     fontWeight: 'bold',
     color: '#ffffff',
   },
   sectionCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#334155',
-    gap: 8,
+    borderColor: Colors.border,
+    gap: 6,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -144,29 +158,36 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   sectionIcon: {
-    fontSize: 18,
+    fontSize: 16,
   },
   sectionTitle: {
-    color: '#f8fafc',
-    fontSize: 15,
+    color: Colors.text,
+    fontSize: FontSize.sm,
     fontWeight: '700',
     flex: 1,
   },
   paragraph: {
-    color: '#cbd5e1',
-    fontSize: 13,
-    lineHeight: 20,
+    color: Colors.textSecondary,
+    fontSize: FontSize.xs,
+    lineHeight: 18,
   },
   agreeButton: {
-    backgroundColor: '#3b82f6',
+    flexDirection: 'row',
+    backgroundColor: Colors.primary,
     paddingVertical: 16,
-    borderRadius: 12,
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    marginTop: Spacing.sm,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   agreeButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    color: '#000000',
+    fontSize: FontSize.md,
+    fontWeight: '700',
   },
 });

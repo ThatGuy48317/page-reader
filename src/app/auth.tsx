@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/lib/firebase';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { GoogleLogo } from '@/components/GoogleLogo';
@@ -25,7 +26,6 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Fallback client IDs to prevent runtime crashes if env vars are not set
   const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
@@ -79,19 +79,17 @@ export default function AuthScreen() {
           setError('Google Sign-In is initializing...');
         }
       }
-    } catch (e: any) {
-      console.error(e);
-      if (e.code !== 'auth/popup-closed-by-user') {
-        setError(e.message || 'Google sign-in failed.');
-      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Google sign-in failed');
     } finally {
-      setLoading(false);
+      if (Platform.OS === 'web') {
+        setLoading(false);
+      }
     }
   };
 
   const handleAuth = async () => {
-    setError('');
-    
     if (!email || !password) {
       setError('Please fill in all fields.');
       return;
@@ -109,24 +107,26 @@ export default function AuthScreen() {
     }
 
     setLoading(true);
+    setError('');
+
     try {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
         await createUserWithEmailAndPassword(auth, email, password);
       }
-    } catch (e: any) {
-      console.error(e);
-      if (e.code === 'auth/email-already-in-use') {
-        setError('That email address is already in use.');
-      } else if (e.code === 'auth/invalid-email') {
-        setError('Invalid email address.');
-      } else if (e.code === 'auth/weak-password') {
-        setError('Password must be at least 6 characters.');
-      } else if (e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential') {
+    } catch (err: any) {
+      console.error('Auth error:', err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
         setError('Invalid email or password.');
+      } else if (err.code === 'auth/email-already-in-use') {
+        setError('An account with this email already exists.');
+      } else if (err.code === 'auth/weak-password') {
+        setError('Password must be at least 6 characters.');
+      } else if (err.code === 'auth/invalid-email') {
+        setError('Please enter a valid email address.');
       } else {
-        setError(e.message || 'Authentication failed.');
+        setError(err.message || 'An error occurred during authentication.');
       }
     } finally {
       setLoading(false);
@@ -135,30 +135,31 @@ export default function AuthScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.logo}>📖</Text>
+          <View style={styles.logoBadge}>
+            <Ionicons name="book-outline" size={40} color={Colors.primary} />
+          </View>
           <Text style={styles.appName}>PaperEcho</Text>
-          <Text style={styles.appSubtitle}>Turn physical books into personal audiobooks</Text>
+          <Text style={styles.appSubtitle}>Turn physical books into AI-narrated audiobooks</Text>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
+          <Text style={styles.cardTitle}>{isLogin ? 'Welcome Back' : 'Create an Account'}</Text>
           
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-          {/* Google Sign-in Button */}
+          {/* Google Sign-In */}
           <TouchableOpacity 
-            style={styles.googleButton} 
+            style={[styles.googleButton, (!request || loading) && styles.googleButtonDisabled]} 
             onPress={handleGoogleSignIn}
-            disabled={loading}
+            disabled={!request || loading}
+            activeOpacity={0.85}
           >
             <View style={styles.googleIconContainer}>
-              <GoogleLogo size={20} />
+              <GoogleLogo size={18} />
             </View>
-            <Text style={styles.googleButtonText}>
-              {isLogin ? 'Continue with Google' : 'Sign up with Google'}
-            </Text>
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
           </TouchableOpacity>
 
           <View style={styles.dividerRow}>
@@ -170,8 +171,8 @@ export default function AuthScreen() {
           <Text style={styles.label}>Email Address</Text>
           <TextInput
             style={styles.input}
-            placeholder="email@example.com"
-            placeholderTextColor={Colors.textTertiary || '#64748b'}
+            placeholder="you@example.com"
+            placeholderTextColor={Colors.textTertiary}
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
@@ -182,8 +183,8 @@ export default function AuthScreen() {
           <Text style={styles.label}>Password</Text>
           <TextInput
             style={styles.input}
-            placeholder="Min 6 characters"
-            placeholderTextColor={Colors.textTertiary || '#64748b'}
+            placeholder="••••••••"
+            placeholderTextColor={Colors.textTertiary}
             secureTextEntry
             autoCapitalize="none"
             value={password}
@@ -196,8 +197,8 @@ export default function AuthScreen() {
               <Text style={styles.label}>Confirm Password</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Repeat password"
-                placeholderTextColor={Colors.textTertiary || '#64748b'}
+                placeholder="••••••••"
+                placeholderTextColor={Colors.textTertiary}
                 secureTextEntry
                 autoCapitalize="none"
                 value={confirmPassword}
@@ -211,9 +212,11 @@ export default function AuthScreen() {
                 activeOpacity={0.8}
                 disabled={loading}
               >
-                <Text style={styles.checkboxIcon}>{agreeToToS ? '☑️' : '⬛'}</Text>
+                <View style={[styles.checkboxBox, agreeToToS && styles.checkboxBoxChecked]}>
+                  {agreeToToS && <Ionicons name="checkmark" size={12} color="#000000" />}
+                </View>
                 <Text style={styles.tosLabel}>
-                  I agree to the <Text style={styles.tosLink}>Terms of Service</Text> and certify that any book I scan is a legally acquired physical book or library book for personal, non-commercial use only.
+                  I certify that I own a lawful copy of any book I scan for personal, non-commercial format shifting under 17 U.S.C. § 107.
                 </Text>
               </TouchableOpacity>
             </>
@@ -223,11 +226,12 @@ export default function AuthScreen() {
             style={styles.authButton} 
             onPress={handleAuth}
             disabled={loading}
+            activeOpacity={0.85}
           >
             {loading ? (
-              <ActivityIndicator color={Colors.text} />
+              <ActivityIndicator color="#000000" />
             ) : (
-              <Text style={styles.authButtonText}>{isLogin ? 'Sign In with Email' : 'Sign Up with Email'}</Text>
+              <Text style={styles.authButtonText}>{isLogin ? 'Sign In' : 'Create Account'}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -239,6 +243,7 @@ export default function AuthScreen() {
             setError('');
           }}
           disabled={loading}
+          activeOpacity={0.7}
         >
           <Text style={styles.toggleText}>
             {isLogin ? "Don't have an account? Sign Up" : 'Already have an account? Sign In'}
@@ -263,31 +268,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
-  logo: {
-    fontSize: 56,
-    marginBottom: Spacing.xs,
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: Colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.md,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
   },
   appName: {
     fontSize: FontSize.xxl,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: Colors.text,
     marginBottom: 4,
+    letterSpacing: -0.5,
   },
   appSubtitle: {
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     color: Colors.textSecondary,
     textAlign: 'center',
   },
   card: {
     backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.lg,
+    borderRadius: BorderRadius.xl,
     padding: Spacing.lg,
     borderWidth: 1,
     borderColor: Colors.border,
   },
   cardTitle: {
-    fontSize: FontSize.xl,
-    fontWeight: 'bold',
+    fontSize: FontSize.lg,
+    fontWeight: '700',
     color: Colors.text,
     marginBottom: Spacing.md,
   },
@@ -311,45 +328,47 @@ const styles = StyleSheet.create({
   },
   googleButtonText: {
     color: '#1f2937',
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.lg,
+    marginVertical: Spacing.md,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.border,
   },
   dividerText: {
-    color: Colors.textTertiary || '#64748b',
+    color: Colors.textTertiary,
     paddingHorizontal: Spacing.md,
-    fontSize: FontSize.xs,
-    fontWeight: 'bold',
+    fontSize: FontSize.xxs,
+    fontWeight: '700',
+    letterSpacing: 0.8,
   },
   label: {
-    color: Colors.textSecondary,
+    color: Colors.textTertiary,
     fontSize: FontSize.xs,
     textTransform: 'uppercase',
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: 0.5,
     marginBottom: Spacing.xs,
     marginTop: Spacing.sm,
   },
   input: {
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfaceElevated,
     color: Colors.text,
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
-    borderColor: Colors.surfaceLight,
-    fontSize: FontSize.md,
+    borderColor: Colors.border,
+    fontSize: FontSize.sm,
   },
   errorText: {
     color: Colors.error,
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     fontWeight: '600',
     marginBottom: Spacing.md,
   },
@@ -359,27 +378,34 @@ const styles = StyleSheet.create({
     marginTop: Spacing.md,
     padding: Spacing.sm,
     borderRadius: BorderRadius.md,
-    backgroundColor: Colors.background,
+    backgroundColor: Colors.surfaceElevated,
     borderWidth: 1,
-    borderColor: 'transparent',
+    borderColor: Colors.border,
   },
   tosRowChecked: {
     borderColor: Colors.primary,
+    backgroundColor: 'rgba(226, 179, 80, 0.06)',
   },
-  checkboxIcon: {
-    fontSize: 18,
+  checkboxBox: {
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: Colors.textTertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: Spacing.sm,
     marginTop: 2,
   },
+  checkboxBoxChecked: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
   tosLabel: {
     flex: 1,
-    fontSize: FontSize.xs,
+    fontSize: FontSize.xxs,
     color: Colors.textSecondary,
     lineHeight: 16,
-  },
-  tosLink: {
-    color: Colors.primary,
-    fontWeight: 'bold',
   },
   authButton: {
     backgroundColor: Colors.primary,
@@ -387,14 +413,16 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     alignItems: 'center',
     marginTop: Spacing.lg,
-  },
-  authButtonDisabled: {
-    opacity: 0.5,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
   },
   authButtonText: {
-    color: Colors.text,
-    fontSize: FontSize.md,
-    fontWeight: 'bold',
+    color: '#000000',
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
   toggleButton: {
     alignItems: 'center',
@@ -403,7 +431,7 @@ const styles = StyleSheet.create({
   },
   toggleText: {
     color: Colors.primary,
-    fontSize: FontSize.sm,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
 });

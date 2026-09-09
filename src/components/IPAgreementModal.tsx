@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 
 interface IPAgreementModalProps {
@@ -25,20 +26,25 @@ export function IPAgreementModal({ visible, onAccept, onCancel }: IPAgreementMod
     <Modal visible={visible} animationType="fade" transparent>
       <View style={styles.overlay}>
         <View style={styles.container}>
-          <Text style={styles.title}>🔒 Intellectual Property Agreement</Text>
+          <View style={styles.iconCircle}>
+            <Ionicons name="shield-checkmark-outline" size={28} color={Colors.primary} />
+          </View>
+          <Text style={styles.title}>Intellectual Property Compliance</Text>
           <Text style={styles.subtitle}>
-            To protect authors and publishers, you must confirm the following before converting this book:
+            To protect authors and publishers under 17 U.S.C. § 107/121 Fair Use, please confirm your lawful ownership:
           </Text>
 
-          <ScrollView contentContainerStyle={styles.checkboxContainer}>
+          <ScrollView contentContainerStyle={styles.checkboxContainer} showsVerticalScrollIndicator={false}>
             <TouchableOpacity 
               style={[styles.checkboxItem, checked1 && styles.checkboxItemChecked]} 
               onPress={() => setChecked1(!checked1)}
               activeOpacity={0.8}
             >
-              <Text style={styles.checkboxIcon}>{checked1 ? '☑️' : '⬛'}</Text>
+              <View style={[styles.checkboxBox, checked1 && styles.checkboxBoxChecked]}>
+                {checked1 && <Ionicons name="checkmark" size={14} color="#000000" />}
+              </View>
               <Text style={styles.checkboxLabel}>
-                I own a legal, physical copy of this book, or have legally borrowed it from a library.
+                I own a lawful physical copy of this book, or have legally borrowed it from a library.
               </Text>
             </TouchableOpacity>
 
@@ -47,9 +53,11 @@ export function IPAgreementModal({ visible, onAccept, onCancel }: IPAgreementMod
               onPress={() => setChecked2(!checked2)}
               activeOpacity={0.8}
             >
-              <Text style={styles.checkboxIcon}>{checked2 ? '☑️' : '⬛'}</Text>
+              <View style={[styles.checkboxBox, checked2 && styles.checkboxBoxChecked]}>
+                {checked2 && <Ionicons name="checkmark" size={14} color="#000000" />}
+              </View>
               <Text style={styles.checkboxLabel}>
-                I will use this audio narration solely for personal study, private research, or accessibility purposes.
+                I will use this format-shifted audio narration solely for personal study, private research, or accessibility.
               </Text>
             </TouchableOpacity>
 
@@ -58,15 +66,17 @@ export function IPAgreementModal({ visible, onAccept, onCancel }: IPAgreementMod
               onPress={() => setChecked3(!checked3)}
               activeOpacity={0.8}
             >
-              <Text style={styles.checkboxIcon}>{checked3 ? '☑️' : '⬛'}</Text>
+              <View style={[styles.checkboxBox, checked3 && styles.checkboxBoxChecked]}>
+                {checked3 && <Ionicons name="checkmark" size={14} color="#000000" />}
+              </View>
               <Text style={styles.checkboxLabel}>
-                I agree not to share, copy, distribute, publish, or sell the generated audio files.
+                I agree not to share, copy, distribute, publicly perform, or sell the generated audio files.
               </Text>
             </TouchableOpacity>
           </ScrollView>
 
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.cancelButton} onPress={onCancel}>
+            <TouchableOpacity style={styles.cancelButton} onPress={onCancel} activeOpacity={0.7}>
               <Text style={styles.cancelButtonText}>Cancel</Text>
             </TouchableOpacity>
 
@@ -74,8 +84,10 @@ export function IPAgreementModal({ visible, onAccept, onCancel }: IPAgreementMod
               style={[styles.acceptButton, !allChecked && styles.acceptButtonDisabled]} 
               onPress={handleAccept}
               disabled={!allChecked}
+              activeOpacity={0.85}
             >
-              <Text style={styles.acceptButtonText}>Confirm & Process</Text>
+              <Ionicons name="sparkles" size={16} color="#000000" style={{ marginRight: 6 }} />
+              <Text style={styles.acceptButtonText}>Confirm & Digitize</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -90,89 +102,116 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.85)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: Spacing.lg || 24,
+    padding: Spacing.lg,
   },
   container: {
     width: '100%',
-    maxWidth: 450,
-    backgroundColor: Colors.surface || '#1e293b',
-    borderRadius: BorderRadius.lg || 16,
-    padding: Spacing.lg || 24,
+    maxWidth: 460,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
     borderWidth: 1,
-    borderColor: Colors.border || '#334155',
+    borderColor: Colors.borderLight,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(226, 179, 80, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    alignSelf: 'center',
+    marginBottom: Spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(226, 179, 80, 0.25)',
   },
   title: {
-    fontSize: FontSize.lg || 18,
-    fontWeight: 'bold',
-    color: Colors.text || '#f8fafc',
-    marginBottom: Spacing.md || 16,
+    fontSize: FontSize.lg,
+    fontWeight: '800',
+    color: Colors.text,
+    marginBottom: Spacing.xs,
     textAlign: 'center',
+    letterSpacing: -0.3,
   },
   subtitle: {
-    fontSize: FontSize.sm || 14,
-    color: Colors.textSecondary || '#94a3b8',
-    marginBottom: Spacing.lg || 24,
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   checkboxContainer: {
-    gap: Spacing.md || 16,
-    marginBottom: Spacing.xl || 32,
+    gap: Spacing.md,
+    marginBottom: Spacing.xl,
   },
   checkboxItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: Colors.background || '#0f172a',
-    borderRadius: BorderRadius.md || 12,
-    padding: Spacing.md || 16,
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
     borderWidth: 1,
-    borderColor: Colors.surfaceLight || '#334155',
+    borderColor: Colors.border,
   },
   checkboxItemChecked: {
-    borderColor: Colors.primary || '#3b82f6',
-    backgroundColor: 'rgba(59,130,246,0.05)',
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(226, 179, 80, 0.08)',
   },
-  checkboxIcon: {
-    fontSize: 20,
-    marginRight: Spacing.md || 12,
-    marginTop: 2,
+  checkboxBox: {
+    width: 20,
+    height: 20,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: Colors.textTertiary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Spacing.md,
+    marginTop: 1,
+  },
+  checkboxBoxChecked: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
   },
   checkboxLabel: {
     flex: 1,
-    fontSize: FontSize.sm || 14,
-    color: Colors.text || '#f8fafc',
-    lineHeight: 20,
+    fontSize: FontSize.xs,
+    color: Colors.text,
+    lineHeight: 18,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: Spacing.md || 16,
+    gap: Spacing.md,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: Spacing.md || 16,
-    borderRadius: BorderRadius.md || 12,
-    backgroundColor: Colors.surfaceLight || '#334155',
+    paddingVertical: 14,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.surfaceElevated,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   cancelButtonText: {
-    color: Colors.textSecondary || '#94a3b8',
-    fontSize: FontSize.md || 16,
+    color: Colors.textSecondary,
+    fontSize: FontSize.sm,
     fontWeight: '600',
   },
   acceptButton: {
     flex: 2,
-    paddingVertical: Spacing.md || 16,
-    borderRadius: BorderRadius.md || 12,
-    backgroundColor: Colors.primary || '#3b82f6',
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   acceptButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   acceptButtonText: {
-    color: Colors.text || '#f8fafc',
-    fontSize: FontSize.md || 16,
-    fontWeight: 'bold',
+    color: '#000000',
+    fontSize: FontSize.sm,
+    fontWeight: '700',
   },
 });

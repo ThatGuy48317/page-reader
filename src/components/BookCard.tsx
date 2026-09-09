@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { Book } from '@/types/book';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { ProgressBar } from './ProgressBar';
+import { BookCover } from './BookCover';
 import { getExpirationInfo } from '@/utils/expiration';
 
 interface BookCardProps {
@@ -16,21 +18,21 @@ export function BookCard({ book, onPress }: BookCardProps) {
   
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'uploading': return '#eab308'; // yellow
-      case 'extracting': return '#3b82f6'; // blue
+      case 'uploading': return '#f59e0b'; // amber
+      case 'extracting': return '#6366f1'; // indigo
       case 'generating_audio': return '#a855f7'; // purple
-      case 'ready': return '#22c55e'; // green
-      case 'expired': return '#ef4444'; // red
-      case 'error': return '#ef4444'; // red
+      case 'ready': return '#10b981'; // emerald
+      case 'expired': return '#ef4444'; // crimson
+      case 'error': return '#ef4444'; // crimson
       default: return '#64748b'; // slate
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'uploading': return 'Uploading...';
-      case 'extracting': return 'Extracting Text...';
-      case 'generating_audio': return 'Generating Audio...';
+      case 'uploading': return 'Uploading';
+      case 'extracting': return 'Transcribing Text';
+      case 'generating_audio': return 'Synthesizing Audio';
       case 'ready': return 'Ready';
       case 'expired': return 'Audio Expired';
       case 'error': return 'Error';
@@ -52,107 +54,183 @@ export function BookCard({ book, onPress }: BookCardProps) {
   };
 
   return (
-    <Pressable style={styles.card} onPress={onPress}>
-      <View style={styles.header}>
+    <Pressable 
+      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} 
+      onPress={onPress}
+    >
+      {/* Mini Book Cover Jacket Thumbnail */}
+      <BookCover 
+        title={book.title} 
+        voiceName={book.voiceName} 
+        size="small" 
+        style={styles.coverThumbnail}
+      />
+
+      {/* Book Metadata & Info */}
+      <View style={styles.infoColumn}>
         <Text style={styles.title} numberOfLines={2}>
-          {book.title || 'Untitled Book'}
+          {book.title || 'Untitled Audiobook'}
         </Text>
-      </View>
-      
-      <View style={styles.statusRow}>
-        <View style={[styles.badge, { backgroundColor: getStatusColor(book.status) }]}>
-          <Text style={styles.badgeText}>{getStatusText(book.status)}</Text>
+
+        <View style={styles.metaRow}>
+          {book.voiceName && (
+            <View style={styles.narratorTag}>
+              <Ionicons name="mic-outline" size={10} color={Colors.primary} style={{ marginRight: 3 }} />
+              <Text style={styles.narratorTagText}>{book.voiceName}</Text>
+            </View>
+          )}
+
+          {isReady && book.duration ? (
+            <Text style={styles.durationText}>
+              {formatDuration(book.duration)}
+            </Text>
+          ) : null}
+
+          {book.createdAt ? (
+            <Text style={styles.dateText}>{formatDate(book.createdAt)}</Text>
+          ) : null}
         </View>
 
-        {isReady && (
-          <View style={[
-            styles.expBadge, 
-            { backgroundColor: expInfo.badgeBg, borderColor: expInfo.badgeBorder }
-          ]}>
-            <Text style={[styles.expBadgeText, { color: expInfo.badgeTextColor }]}>
-              {expInfo.label}
+        {/* Status / Retention Badges */}
+        <View style={styles.statusRow}>
+          <View style={[styles.badge, { backgroundColor: `${getStatusColor(book.status)}18` }]}>
+            <View style={[styles.statusDot, { backgroundColor: getStatusColor(book.status) }]} />
+            <Text style={[styles.badgeText, { color: getStatusColor(book.status) }]}>
+              {getStatusText(book.status)}
             </Text>
+          </View>
+
+          {isReady && (
+            <View style={[
+              styles.expBadge, 
+              { backgroundColor: expInfo.badgeBg, borderColor: expInfo.badgeBorder }
+            ]}>
+              <Ionicons 
+                name={expInfo.isExpired ? "alert-circle" : "time-outline"} 
+                size={10} 
+                color={expInfo.badgeTextColor} 
+                style={{ marginRight: 3 }} 
+              />
+              <Text style={[styles.expBadgeText, { color: expInfo.badgeTextColor }]}>
+                {expInfo.label}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Progress Bar for Active Processing */}
+        {!isReady && book.progress !== undefined && (
+          <View style={styles.progressContainer}>
+            <ProgressBar progress={book.progress} color={getStatusColor(book.status)} height={4} />
           </View>
         )}
       </View>
 
-      <View style={styles.detailsRow}>
-        {isReady && book.duration ? (
-          <Text style={styles.detailText}>⏱ {formatDuration(book.duration)}</Text>
-        ) : null}
-        {book.voiceName && (
-          <Text style={styles.detailText}>🎙 {book.voiceName}</Text>
-        )}
-        {book.createdAt && (
-          <Text style={styles.detailText}>{formatDate(book.createdAt)}</Text>
-        )}
-      </View>
-
-      {!isReady && book.progress !== undefined && (
-        <View style={styles.progressContainer}>
-          <ProgressBar progress={book.progress} color={getStatusColor(book.status)} />
-        </View>
-      )}
+      <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} style={styles.chevron} />
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: Colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
   },
-  header: {
-    marginBottom: 10,
+  cardPressed: {
+    backgroundColor: Colors.surfaceElevated,
+    borderColor: Colors.borderLight,
+  },
+  coverThumbnail: {
+    alignSelf: 'flex-start',
+  },
+  infoColumn: {
+    flex: 1,
   },
   title: {
-    color: '#f8fafc',
-    fontSize: 17,
-    fontWeight: 'bold',
+    color: Colors.text,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    marginBottom: 8,
+  },
+  narratorTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceElevated,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  narratorTagText: {
+    fontSize: FontSize.xxs,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  durationText: {
+    fontSize: FontSize.xs,
+    color: Colors.textTertiary,
+    fontWeight: '500',
+  },
+  dateText: {
+    fontSize: FontSize.xs,
+    color: Colors.textTertiary,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
   },
   badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  badgeText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  expBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 6,
+    borderRadius: BorderRadius.full,
+  },
+  statusDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    marginRight: 5,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  expBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.full,
     borderWidth: 1,
   },
   expBadgeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
-  detailsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    flexWrap: 'wrap',
-  },
-  detailText: {
-    color: '#94a3b8',
-    fontSize: 13,
-    fontWeight: '500',
-  },
   progressContainer: {
-    marginTop: 12,
+    marginTop: 8,
+  },
+  chevron: {
+    marginLeft: 4,
   },
 });

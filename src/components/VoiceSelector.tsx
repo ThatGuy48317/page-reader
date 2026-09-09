@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { FEATURED_VOICES, ALL_VOICES, AUTO_VOICE } from '@/constants/voices';
 import { Voice } from '@/types/book';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
@@ -27,10 +28,14 @@ export function VoiceSelector({ selectedVoice, onSelectVoice, compact = false }:
                   isSelected && styles.selectedChip,
                 ]}
                 onPress={() => onSelectVoice(voice.id)}
+                activeOpacity={0.7}
               >
-                <Text style={styles.compactEmoji}>
-                  {voice.isAuto ? '✨' : voice.gender === 'male' ? '👨' : voice.gender === 'female' ? '👩' : '🎙️'}
-                </Text>
+                <Ionicons 
+                  name={voice.isAuto ? 'sparkles' : 'mic-outline'} 
+                  size={14} 
+                  color={isSelected ? Colors.primary : Colors.textSecondary} 
+                  style={{ marginRight: 6 }}
+                />
                 <Text style={[styles.compactChipText, isSelected && styles.selectedChipText]}>
                   {voice.name}
                 </Text>
@@ -48,7 +53,7 @@ export function VoiceSelector({ selectedVoice, onSelectVoice, compact = false }:
   return (
     <View style={styles.listContainer}>
       <Text style={styles.sectionHeader}>
-        {showAll ? 'All Narrators (30)' : 'Curated Narrators'}
+        {showAll ? 'All 30 Neural Narrators' : 'Featured Narrator Personas'}
       </Text>
 
       {voicesToDisplay.map((voice) => {
@@ -60,10 +65,12 @@ export function VoiceSelector({ selectedVoice, onSelectVoice, compact = false }:
             onPress={() => onSelectVoice(voice.id)}
             activeOpacity={0.7}
           >
-            <View style={styles.listIconContainer}>
-              <Text style={styles.listEmoji}>
-                {voice.isAuto ? '✨' : voice.gender === 'male' ? '👨' : voice.gender === 'female' ? '👩' : '🎙️'}
-              </Text>
+            <View style={[styles.listIconContainer, isSelected && styles.listIconContainerSelected]}>
+              <Ionicons 
+                name={voice.isAuto ? 'sparkles' : 'mic'} 
+                size={20} 
+                color={isSelected ? Colors.primary : Colors.textSecondary} 
+              />
             </View>
 
             <View style={styles.listTextContainer}>
@@ -80,7 +87,7 @@ export function VoiceSelector({ selectedVoice, onSelectVoice, compact = false }:
 
             {isSelected ? (
               <View style={styles.checkCircle}>
-                <Text style={styles.checkText}>✓</Text>
+                <Ionicons name="checkmark" size={14} color="#000000" />
               </View>
             ) : (
               <View style={styles.uncheckCircle} />
@@ -92,10 +99,16 @@ export function VoiceSelector({ selectedVoice, onSelectVoice, compact = false }:
       <TouchableOpacity
         style={styles.toggleAllButton}
         onPress={() => setShowAll(!showAll)}
-        activeOpacity={0.6}
+        activeOpacity={0.7}
       >
+        <Ionicons 
+          name={showAll ? "chevron-up" : "chevron-down"} 
+          size={14} 
+          color={Colors.primary} 
+          style={{ marginRight: 6 }} 
+        />
         <Text style={styles.toggleAllText}>
-          {showAll ? '← Show Curated Only' : '+ Browse All 30 Voices'}
+          {showAll ? 'Show Curated Only' : 'Browse All 30 Gemini Voices'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -113,64 +126,64 @@ const styles = StyleSheet.create({
   compactChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: Colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: BorderRadius.full,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: Colors.border,
   },
   selectedChip: {
-    borderColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-  },
-  compactEmoji: {
-    fontSize: 15,
-    marginRight: 6,
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(226, 179, 80, 0.12)',
   },
   compactChipText: {
-    color: '#94a3b8',
-    fontSize: FontSize.sm,
+    color: Colors.textSecondary,
+    fontSize: FontSize.xs,
     fontWeight: '600',
   },
   selectedChipText: {
-    color: '#60a5fa',
+    color: Colors.primary,
+    fontWeight: '700',
   },
   listContainer: {
     gap: Spacing.sm,
   },
   sectionHeader: {
-    fontSize: FontSize.xs,
+    fontSize: FontSize.xxs,
     textTransform: 'uppercase',
     letterSpacing: 1,
-    color: '#64748b',
+    color: Colors.textTertiary,
     fontWeight: '700',
     marginBottom: 4,
   },
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b',
+    backgroundColor: Colors.surfaceElevated,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: Colors.border,
   },
   selectedListItem: {
-    borderColor: '#3b82f6',
-    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderColor: Colors.primary,
+    backgroundColor: 'rgba(226, 179, 80, 0.06)',
   },
   listIconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#0f172a',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
-  listEmoji: {
-    fontSize: 22,
+  listIconContainerSelected: {
+    borderColor: 'rgba(226, 179, 80, 0.4)',
+    backgroundColor: 'rgba(226, 179, 80, 0.1)',
   },
   listTextContainer: {
     flex: 1,
@@ -182,56 +195,54 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   listVoiceName: {
-    fontSize: FontSize.md,
+    fontSize: FontSize.sm,
     fontWeight: '700',
-    color: '#f8fafc',
+    color: Colors.text,
   },
   personaBadge: {
-    backgroundColor: '#334155',
+    backgroundColor: Colors.surfaceHighlight,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: BorderRadius.full,
   },
   personaText: {
-    fontSize: 11,
-    color: '#93c5fd',
+    fontSize: 10,
+    color: Colors.primary,
     fontWeight: '600',
   },
   listVoiceDesc: {
     fontSize: FontSize.xs,
-    color: '#94a3b8',
+    color: Colors.textTertiary,
     lineHeight: 16,
   },
   checkCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#3b82f6',
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: Colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: Spacing.sm,
   },
-  checkText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
   uncheckCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1,
-    borderColor: '#475569',
+    borderColor: Colors.borderLight,
     marginLeft: Spacing.sm,
   },
   toggleAllButton: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: Spacing.md,
     marginTop: 4,
   },
   toggleAllText: {
-    color: '#60a5fa',
-    fontSize: FontSize.sm,
-    fontWeight: '600',
+    color: Colors.primary,
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
 });
