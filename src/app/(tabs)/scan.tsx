@@ -23,6 +23,8 @@ export default function ScanScreen() {
   const [mode, setMode] = useState<'idle' | 'camera' | 'preview'>('idle');
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [torchEnabled, setTorchEnabled] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
   
@@ -32,6 +34,31 @@ export default function ScanScreen() {
   const [showIPModal, setShowIPModal] = useState(false);
   
   const cameraRef = useRef<any>(null);
+  const timerRef = useRef<any>(null);
+
+  // Live recording timer
+  useEffect(() => {
+    if (isRecording) {
+      setRecordingDuration(0);
+      timerRef.current = setInterval(() => {
+        setRecordingDuration(prev => prev + 1);
+      }, 1000);
+    } else {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isRecording]);
+
+  const formatTimer = (sec: number) => {
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
   useEffect(() => {
     const loadDefaultVoice = async () => {
@@ -216,7 +243,13 @@ export default function ScanScreen() {
 
     return (
       <View style={{ flex: 1, backgroundColor: '#000000' }}>
-        <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} mode="video" facing="back" />
+        <CameraView 
+          style={StyleSheet.absoluteFill} 
+          ref={cameraRef} 
+          mode="video" 
+          facing="back" 
+          enableTorch={torchEnabled}
+        />
         <SafeAreaView style={[StyleSheet.absoluteFill, styles.cameraOverlay]} pointerEvents="box-none">
           {/* Viewfinder Top HUD */}
           <View style={styles.topHud}>
@@ -230,8 +263,22 @@ export default function ScanScreen() {
 
             <View style={styles.recordingIndicator}>
               <View style={[styles.recDot, isRecording && styles.recDotActive]} />
-              <Text style={styles.recText}>{isRecording ? 'RECORDING' : 'READY'}</Text>
+              <Text style={styles.recText}>
+                {isRecording ? `${formatTimer(recordingDuration)} / 05:00` : 'READY TO SCAN'}
+              </Text>
             </View>
+
+            <TouchableOpacity 
+              style={[styles.closeButton, torchEnabled && styles.torchButtonActive]} 
+              onPress={() => setTorchEnabled(!torchEnabled)}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name={torchEnabled ? "flash" : "flash-off"} 
+                size={20} 
+                color={torchEnabled ? Colors.primary : "#ffffff"} 
+              />
+            </TouchableOpacity>
           </View>
 
           {/* Center Framing Brackets */}
@@ -457,6 +504,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
+  },
+  torchButtonActive: {
+    backgroundColor: 'rgba(226, 179, 80, 0.25)',
+    borderColor: Colors.primary,
   },
   recordingIndicator: {
     flexDirection: 'row',
