@@ -98,24 +98,31 @@ export default function ScanScreen() {
     setIsUploading(true);
 
     try {
-      console.log('Reading video file from filesystem:', videoUri);
+      console.log('Preparing video file for upload:', videoUri);
       const file = new File(videoUri);
-      const bytes = await file.bytes();
-
-      console.log(`Video file read successfully: ${(bytes.length / (1024 * 1024)).toFixed(2)} MB`);
-
-      if (!bytes || bytes.length < 1000) {
-        throw new Error(`Video file is empty or could not be read (${bytes?.length || 0} bytes).`);
-      }
-
+      
       const ext = videoUri.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
       const mimeType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
       const filename = `users/${auth.currentUser?.uid || 'anon'}/videos/${Date.now()}.${ext}`;
-      const storageRef = ref(storage, filename);
       
-      console.log('Starting direct upload to Firebase Storage:', filename);
-      await uploadBytes(storageRef, bytes, { contentType: mimeType });
-      console.log('Upload to Firebase Storage complete!');
+      const token = await auth.currentUser?.getIdToken();
+      const bucketName = process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'page-reader-prod.firebasestorage.app';
+      const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(filename)}`;
+
+      console.log('Starting native streaming upload to Firebase Storage:', filename);
+      const uploadResult = await file.upload(uploadUrl, {
+        httpMethod: 'POST',
+        headers: {
+          'Content-Type': mimeType,
+          ...(token ? { 'Authorization': `Firebase ${token}` } : {}),
+        },
+      });
+
+      if (uploadResult.status < 200 || uploadResult.status >= 300) {
+        throw new Error(`Upload failed (${uploadResult.status}): ${uploadResult.body}`);
+      }
+
+      console.log('Native upload to Firebase Storage complete!');
 
       const docRef = await addDoc(collection(db, 'users', auth.currentUser?.uid || 'anon', 'books'), {
         title,
