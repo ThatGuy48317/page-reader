@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, Activi
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import { File } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { ref, uploadBytesResumable } from 'firebase/storage';
@@ -82,7 +83,7 @@ export default function ScanScreen() {
 
   const pickVideo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+      mediaTypes: ['videos'],
       allowsEditing: true,
       quality: 1,
     });
@@ -97,13 +98,19 @@ export default function ScanScreen() {
     setIsUploading(true);
 
     try {
-      const response = await fetch(videoUri);
-      const blob = await response.blob();
+      const file = new File(videoUri);
+      const bytes = await file.bytes();
+
+      if (!bytes || bytes.length < 1000) {
+        throw new Error(`Video file is empty or could not be read (${bytes?.length || 0} bytes).`);
+      }
+
       const ext = videoUri.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
+      const mimeType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
       const filename = `users/${auth.currentUser?.uid || 'anon'}/videos/${Date.now()}.${ext}`;
       const storageRef = ref(storage, filename);
       
-      const uploadTask = uploadBytesResumable(storageRef, blob);
+      const uploadTask = uploadBytesResumable(storageRef, bytes, { contentType: mimeType });
       
       uploadTask.on('state_changed', 
         (snapshot) => {
