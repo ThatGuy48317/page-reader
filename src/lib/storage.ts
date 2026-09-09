@@ -87,3 +87,25 @@ export async function updateBookStatus(
     throw error;
   }
 }
+
+const POSITION_KEY_PREFIX = 'paperecho_pos_';
+
+export async function savePlaybackPosition(bookId: string, positionSec: number): Promise<void> {
+  try {
+    const key = `${POSITION_KEY_PREFIX}${bookId}`;
+    await AsyncStorage.setItem(key, String(positionSec));
+  } catch (error) {
+    console.error(`Failed to save playback position for ${bookId}:`, error);
+  }
+}
+
+export async function getPlaybackPosition(bookId: string): Promise<number> {
+  try {
+    const key = `${POSITION_KEY_PREFIX}${bookId}`;
+    const val = await AsyncStorage.getItem(key);
+    return val ? parseFloat(val) : 0;
+  } catch (error) {
+    console.error(`Failed to get playback position for ${bookId}:`, error);
+    return 0;
+  }
+}

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Modal, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -11,6 +11,8 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Book, Chapter } from '@/types/book';
 import { VOICES } from '@/constants/voices';
 import { DOCUMENT_TYPES } from '@/constants/documentTypes';
+import { savePlaybackPosition, getPlaybackPosition } from '@/lib/storage';
+import { getExpirationInfo } from '@/utils/expiration';
 
 const formatTime = (seconds: number) => {
   if (isNaN(seconds) || seconds < 0) return '0:00';
@@ -30,11 +32,15 @@ export default function BookPlayerScreen() {
   const [selectedVoice, setSelectedVoice] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('auto');
   const [isReprocessing, setIsReprocessing] = useState(false);
+  const [hasAutoResumed, setHasAutoResumed] = useState(false);
+  const [resumeMessage, setResumeMessage] = useState<string | null>(null);
 
   const { 
     isPlaying, position, duration, rate, isLoading,
     play, pause, seekTo, skipForward, skipBack, setRate 
   } = useAudioPlayer(playableUrl);
+
+  const lastSavedRef = useRef<number>(0);
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -77,6 +83,30 @@ export default function BookPlayerScreen() {
     fetchBook();
   }, [id]);
 
+  // Auto-resume playback position when audio is loaded
+  useEffect(() => {
+    if (duration > 0 && !hasAutoResumed && id) {
+      setHasAutoResumed(true);
+      getPlaybackPosition(id as string).then((savedPos) => {
+        if (savedPos > 3 && savedPos < duration - 5) {
+          seekTo(savedPos);
+          setResumeMessage(`Resumed from ${formatTime(savedPos)}`);
+          setTimeout(() => setResumeMessage(null), 4000);
+        }
+      });
+    }
+  }, [duration, hasAutoResumed, id, seekTo]);
+
+  // Throttled playback position persistence (every 3 seconds)
+  useEffect(() => {
+    if (id && position > 0) {
+      if (Math.abs(position - lastSavedRef.current) > 3) {
+        lastSavedRef.current = position;
+        savePlaybackPosition(id as string, position);
+      }
+    }
+  }, [position, id]);
+
   if (loading || !book) {
     return (
       <SafeAreaView style={styles.centerContainer}>
@@ -85,6 +115,8 @@ export default function BookPlayerScreen() {
       </SafeAreaView>
     );
   }
+
+  const expInfo = getExpirationInfo(book.expiresAt);
 
   // Find current chapter based on playback position
   let currentChapter: Chapter | undefined;
@@ -150,6 +182,13 @@ export default function BookPlayerScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Auto-Resume Toast Notification */}
+      {resumeMessage && (
+        <View style={styles.resumeToast}>
+          <Text style={styles.resumeToastText}>📍 {resumeMessage}</Text>
+        </View>
+      )}
+
       <ScrollView 
         style={styles.scrollArea} 
         contentContainerStyle={styles.scrollContent}
@@ -159,26 +198,39 @@ export default function BookPlayerScreen() {
         <View style={styles.cardCover}>
           <Text style={styles.coverEmoji}>📖</Text>
           <Text style={styles.coverBookTitle} numberOfLines={2}>{book.title}</Text>
-          {book.detectedType && (
-            <View style={styles.styleBadge}>
-              <Text style={styles.styleBadgeText}>
-                {DOCUMENT_TYPES.find(d => d.id === book.detectedType)?.name || book.detectedType}
+          
+          <View style={styles.badgeRow}>
+            {book.detectedType && (
+              <View style={styles.styleBadge}>
+                <Text style={styles.styleBadgeText}>
+                  {DOCUMENT_TYPES.find(d => d.id === book.detectedType)?.name || book.detectedType}
+                </Text>
+              </View>
+            )}
+
+            {/* Retention Expiration Badge */}
+            <View style={[
+              styles.expPill, 
+              { backgroundColor: expInfo.badgeBg, borderColor: expInfo.badgeBorder }
+            ]}>
+              <Text style={[styles.expPillText, { color: expInfo.badgeTextColor }]}>
+                {expInfo.label}
               </Text>
             </View>
-          )}
+          </View>
         </View>
 
-        {book.status === 'expired' ? (
+        {expInfo.isExpired ? (
           <View style={styles.expiredContainer}>
             <Text style={styles.expiredTitle}>⏰ Audio Retention Expired</Text>
             <Text style={styles.expiredDescription}>
-              Audio files are kept for 7 days to preserve storage. You can re-narrate your book anytime for free!
+              Audio files are retained for 7 days for fair use and cloud cleanup. You can re-narrate your book anytime for free!
             </Text>
             <TouchableOpacity 
               style={styles.reNarrateButtonInline}
               onPress={() => setShowSettings(true)}
             >
-              <Text style={styles.reNarrateButtonTextInline}>Re-narrate Book 🔁</Text>
+              <Text style={styles.reNarrateButtonTextInline}>Re-narrate Audiobook 🔁</Text>
             </TouchableOpacity>
           </View>
         ) : (
@@ -369,6 +421,18 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 14,
   },
+  resumeToast: {
+    backgroundColor: '#3b82f6',
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resumeToastText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   header: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -427,18 +491,35 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 8,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   styleBadge: {
     backgroundColor: 'rgba(59, 130, 246, 0.15)',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: 'rgba(59, 130, 246, 0.3)',
   },
   styleBadgeText: {
     color: '#60a5fa',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  expPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  expPillText: {
     fontSize: 12,
     fontWeight: '600',
   },

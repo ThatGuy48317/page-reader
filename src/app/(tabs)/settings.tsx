@@ -4,11 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { auth } from '@/lib/firebase';
 import { VoiceSelector } from '@/components/VoiceSelector';
+import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { DEFAULT_VOICE } from '@/constants/voices';
 
 export default function SettingsScreen() {
   const [selectedVoice, setSelectedVoice] = useState<string>(DEFAULT_VOICE);
+  const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
 
   useEffect(() => {
     const loadVoice = async () => {
@@ -63,6 +65,25 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Legal & Compliance</Text>
+          <TouchableOpacity 
+            style={styles.legalCard}
+            onPress={() => setShowTermsModal(true)}
+          >
+            <View style={styles.legalRow}>
+              <View style={styles.legalIconContainer}>
+                <Text style={styles.legalIcon}>⚖️</Text>
+              </View>
+              <View style={styles.legalTextContainer}>
+                <Text style={styles.legalTitle}>Terms of Service & Fair Use</Text>
+                <Text style={styles.legalSubtitle}>Format shifting, 7-day retention & copyright compliance</Text>
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
             <Text style={styles.signOutText}>Sign Out</Text>
           </TouchableOpacity>
@@ -72,6 +93,11 @@ export default function SettingsScreen() {
           <Text style={styles.versionText}>PaperEcho v1.0.0</Text>
         </View>
       </ScrollView>
+
+      <TermsOfServiceModal 
+        visible={showTermsModal} 
+        onClose={() => setShowTermsModal(false)} 
+      />
     </SafeAreaView>
   );
 }
@@ -104,6 +130,49 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
+  },
+  legalCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  legalIconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  legalIcon: {
+    fontSize: 18,
+  },
+  legalTextContainer: {
+    flex: 1,
+    marginLeft: Spacing.xs,
+  },
+  legalTitle: {
+    fontSize: FontSize.md,
+    fontWeight: '600',
+    color: Colors.text,
+    marginBottom: 2,
+  },
+  legalSubtitle: {
+    fontSize: FontSize.xs,
+    color: Colors.textSecondary,
+    lineHeight: 16,
+  },
+  chevron: {
+    fontSize: FontSize.xl,
+    color: Colors.textTertiary,
+    fontWeight: 'bold',
   },
   label: {
     fontSize: FontSize.sm,
