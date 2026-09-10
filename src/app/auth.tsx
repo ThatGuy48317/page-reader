@@ -10,6 +10,7 @@ import {
 } from 'firebase/auth';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
+import { makeRedirectUri } from 'expo-auth-session';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/lib/firebase';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
@@ -30,11 +31,16 @@ export default function AuthScreen() {
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
 
+  const redirectUri = makeRedirectUri({
+    scheme: 'paperecho',
+  });
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     clientId: webClientId,
     webClientId,
     androidClientId,
     iosClientId,
+    redirectUri,
   });
 
   useEffect(() => {
