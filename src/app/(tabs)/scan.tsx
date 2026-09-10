@@ -126,17 +126,39 @@ export default function ScanScreen() {
 
     try {
       console.log('Preparing video file for upload:', videoUri);
-      const file = new File(videoUri);
       
       const ext = videoUri.toLowerCase().endsWith('.mov') ? 'mov' : 'mp4';
       const mimeType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
       const filename = `users/${auth.currentUser?.uid || 'anon'}/videos/${Date.now()}.${ext}`;
-      
+
+      // 1. Create Firestore document immediately so user gets instant studio feedback
+      const docRef = await addDoc(collection(db, 'users', auth.currentUser?.uid || 'anon', 'books'), {
+        title,
+        status: 'uploading',
+        voiceName: selectedVoice,
+        documentType,
+        createdAt: serverTimestamp(),
+        videoUri: filename,
+        progress: 10,
+      });
+
+      const bookId = docRef.id;
+
+      // 2. Instantly transition to studio workflow screen & clear scan form
+      setIsUploading(false);
+      setMode('idle');
+      setTitle('');
+      setVideoUri(null);
+      setUploadProgress(0);
+      router.push(`/processing/${bookId}`);
+
+      // 3. Perform file upload in background while user watches studio progress
+      const file = new File(videoUri);
       const token = await auth.currentUser?.getIdToken();
       const bucketName = process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'page-reader-prod.firebasestorage.app';
       const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o?uploadType=media&name=${encodeURIComponent(filename)}`;
 
-      console.log('Starting native streaming upload to Firebase Storage:', filename);
+      console.log('Starting background streaming upload to Firebase Storage:', filename);
       const uploadResult = await file.upload(uploadUrl, {
         httpMethod: 'POST',
         headers: {
@@ -149,21 +171,12 @@ export default function ScanScreen() {
         throw new Error(`Upload failed (${uploadResult.status}): ${uploadResult.body}`);
       }
 
-      console.log('Native upload to Firebase Storage complete!');
+      console.log('Background upload to Firebase Storage complete!');
 
-      const docRef = await addDoc(collection(db, 'users', auth.currentUser?.uid || 'anon', 'books'), {
-        title,
-        status: 'uploading',
-        voiceName: selectedVoice,
-        documentType,
-        createdAt: serverTimestamp(),
-        videoUri: filename,
-        progress: 10,
-      });
-      
+      // 4. Trigger processVideo cloud function
       const processVideoFn = httpsCallable(functions, 'processVideo', { timeout: 600000 });
       processVideoFn({ 
-        bookId: docRef.id,
+        bookId,
         videoPath: filename,
         voiceName: selectedVoice,
         documentType,
@@ -171,12 +184,6 @@ export default function ScanScreen() {
         console.error('processVideo background execution error:', err);
       });
 
-      setIsUploading(false);
-      setMode('idle');
-      setTitle('');
-      setVideoUri(null);
-      setUploadProgress(0);
-      router.push(`/processing/${docRef.id}`);
     } catch (error) {
       console.error('Upload & process error:', error);
       setIsUploading(false);
