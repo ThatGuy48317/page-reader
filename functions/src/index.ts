@@ -380,6 +380,18 @@ Rules:
           ttsSystemInstruction = "Read in a warm, playful, highly energetic, and engaging voice, suitable for children.";
           break;
 
+        case "tactile_children":
+          cleaningPrompt = `Clean this children's touch-and-feel book text for audiobook narration. The text was extracted from video frames.
+Rules:
+- Fix spelling/glitches from scanning.
+- Insert explicit pause markers [pause] between distinct pages or stanzas to allow children 3-4 seconds of silence to feel tactile texture patches and turn board book pages.
+- Make dialogue highly readable with expressive tags (like '[excited]', '[playful]').
+- Keep chapter markers as [CHAPTER: Title].
+- Return clean, patient, engaging storytelling prose with page-turn pauses.
+- Do NOT add any commentary.`;
+          ttsSystemInstruction = "Read in a warm, patient, playful storytelling voice with deliberate pauses between pages.";
+          break;
+
         case "nonfiction":
         default:
           cleaningPrompt = `Clean this non-fiction book or textbook text for audiobook narration. The text was extracted from video frames.
@@ -480,6 +492,7 @@ ${rawText.substring(0, 3000)}`,
             resolvedVoice = "Aoede";
             break;
           case "children":
+          case "tactile_children":
             resolvedVoice = "Zephyr";
             break;
           default:
