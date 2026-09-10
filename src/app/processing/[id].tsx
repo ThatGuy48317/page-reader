@@ -132,6 +132,37 @@ export default function ProcessingScreen() {
           })}
         </View>
 
+        {book.tokenUsage && (
+          <View style={styles.tokenCard}>
+            <View style={styles.tokenCardHeader}>
+              <Ionicons name="calculator-outline" size={16} color={Colors.primary} style={{ marginRight: 6 }} />
+              <Text style={styles.tokenCardTitle}>API Token & Cost Tracking</Text>
+            </View>
+
+            <View style={styles.tokenGrid}>
+              <View style={styles.tokenItem}>
+                <Text style={styles.tokenLabel}>OCR Input</Text>
+                <Text style={styles.tokenValue}>{book.tokenUsage.ocrInputTokens.toLocaleString()} tkns</Text>
+              </View>
+
+              <View style={styles.tokenItem}>
+                <Text style={styles.tokenLabel}>Text Output</Text>
+                <Text style={styles.tokenValue}>{book.tokenUsage.ocrOutputTokens.toLocaleString()} tkns</Text>
+              </View>
+
+              <View style={styles.tokenItem}>
+                <Text style={styles.tokenLabel}>TTS Speech</Text>
+                <Text style={styles.tokenValue}>{book.tokenUsage.ttsCharCount.toLocaleString()} chars</Text>
+              </View>
+
+              <View style={styles.tokenItem}>
+                <Text style={styles.tokenLabel}>Est. Cost</Text>
+                <Text style={styles.tokenCostValue}>${book.tokenUsage.estimatedCostUsd.toFixed(4)}</Text>
+              </View>
+            </View>
+          </View>
+        )}
+
         {book.status === 'error' && (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={24} color={Colors.error} style={{ marginBottom: 6 }} />
@@ -318,5 +349,56 @@ const styles = StyleSheet.create({
     color: '#000000', 
     fontSize: FontSize.md, 
     fontWeight: '700',
+  },
+  tokenCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginBottom: Spacing.lg,
+  },
+  tokenCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  tokenCardTitle: {
+    fontSize: FontSize.xs,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  tokenGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tokenItem: {
+    width: '47%',
+    backgroundColor: Colors.surfaceElevated,
+    padding: 8,
+    borderRadius: BorderRadius.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  tokenLabel: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    textTransform: 'uppercase',
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  tokenValue: {
+    fontSize: FontSize.xs,
+    color: Colors.text,
+    fontWeight: '700',
+  },
+  tokenCostValue: {
+    fontSize: FontSize.xs,
+    color: Colors.primary,
+    fontWeight: '800',
   },
 });

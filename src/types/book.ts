@@ -4,6 +4,13 @@ export interface Chapter {
   textOffset: number; // character offset in text
 }
 
+export interface TokenUsage {
+  ocrInputTokens: number;
+  ocrOutputTokens: number;
+  ttsCharCount: number;
+  estimatedCostUsd: number;
+}
+
 export interface Book {
   id: string;
   title: string;
@@ -17,6 +24,7 @@ export interface Book {
   documentType: string;
   detectedType?: string;
   coverUrl?: string;
+  tokenUsage?: TokenUsage;
   createdAt: number;
   expiresAt?: number; // Expiration timestamp
   duration?: number; // seconds

@@ -529,6 +529,20 @@ export default function BookPlayerScreen() {
                 ))}
               </View>
 
+              {book.tokenUsage && (
+                <View style={{ marginTop: 24, padding: 12, backgroundColor: Colors.surfaceElevated, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.border }}>
+                  <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: Colors.textSecondary, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                    📊 API Token & Cost Audit
+                  </Text>
+                  <Text style={{ fontSize: FontSize.xs, color: Colors.textTertiary, lineHeight: 18 }}>
+                    OCR Input: {book.tokenUsage.ocrInputTokens.toLocaleString()} tokens | Text Output: {book.tokenUsage.ocrOutputTokens.toLocaleString()} tokens | TTS: {book.tokenUsage.ttsCharCount.toLocaleString()} chars
+                  </Text>
+                  <Text style={{ fontSize: FontSize.xs, fontWeight: '700', color: Colors.primary, marginTop: 4 }}>
+                    Estimated Gemini API Cost: ${book.tokenUsage.estimatedCostUsd.toFixed(4)}
+                  </Text>
+                </View>
+              )}
+
               <TouchableOpacity 
                 style={[styles.reNarrateSubmitButton, isReprocessing && styles.reNarrateButtonDisabled]}
                 onPress={handleReNarrate}
