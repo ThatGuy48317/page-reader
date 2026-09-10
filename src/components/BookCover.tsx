@@ -1,11 +1,12 @@
-import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, StyleProp } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ViewStyle, StyleProp, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, BorderRadius, FontSize, Spacing } from '@/constants/theme';
 
 interface BookCoverProps {
   title: string;
   voiceName?: string;
+  coverUrl?: string;
   size?: 'small' | 'medium' | 'hero';
   style?: StyleProp<ViewStyle>;
 }
@@ -72,7 +73,8 @@ function getPaletteForTitle(title: string) {
   return COVER_PALETTES[index];
 }
 
-export function BookCover({ title, voiceName, size = 'medium', style }: BookCoverProps) {
+export function BookCover({ title, voiceName, coverUrl, size = 'medium', style }: BookCoverProps) {
+  const [imgError, setImgError] = useState(false);
   const palette = getPaletteForTitle(title || 'Untitled');
 
   const dimensions = {
@@ -82,6 +84,7 @@ export function BookCover({ title, voiceName, size = 'medium', style }: BookCove
   }[size];
 
   const cleanTitle = (title || 'Untitled Book').trim();
+  const showImage = !!coverUrl && !imgError;
 
   return (
     <View
@@ -98,72 +101,97 @@ export function BookCover({ title, voiceName, size = 'medium', style }: BookCove
         style,
       ]}
     >
-      {/* 3D Spine Fold Shadow on Left Edge */}
-      <View
-        style={[
-          styles.spine,
-          {
-            width: dimensions.spineWidth,
-            borderTopLeftRadius: dimensions.radius,
-            borderBottomLeftRadius: dimensions.radius,
-            backgroundColor: palette.spine,
-          },
-        ]}
-      />
-
-      {/* Subtle Embossed Foil Border */}
-      <View
-        style={[
-          styles.embossFrame,
-          {
-            borderRadius: Math.max(dimensions.radius - 3, 3),
-            borderColor: palette.accent,
-          },
-        ]}
-      />
-
-      {/* Cover Content */}
-      <View style={[styles.content, { paddingLeft: dimensions.spineWidth + 6 }]}>
-        {/* Top Decorative Emblem */}
-        <View style={styles.topRow}>
-          <Ionicons
-            name={palette.icon}
-            size={dimensions.iconSize}
-            color={palette.accent}
-            style={{ opacity: 0.85 }}
+      {showImage ? (
+        <>
+          <Image
+            source={{ uri: coverUrl }}
+            style={StyleSheet.absoluteFill}
+            resizeMode="cover"
+            onError={() => setImgError(true)}
           />
-        </View>
-
-        {/* Center Title */}
-        <View style={styles.titleWrapper}>
-          <Text
+          {/* Subtle 3D Spine Overlay on top of cover image */}
+          <View
             style={[
-              styles.bookTitle,
+              styles.spine,
               {
-                fontSize: dimensions.titleSize,
-                color: palette.text,
+                width: dimensions.spineWidth,
+                borderTopLeftRadius: dimensions.radius,
+                borderBottomLeftRadius: dimensions.radius,
+                backgroundColor: 'rgba(0,0,0,0.35)',
               },
             ]}
-            numberOfLines={size === 'small' ? 3 : size === 'medium' ? 4 : 5}
-          >
-            {cleanTitle}
-          </Text>
-        </View>
+          />
+        </>
+      ) : (
+        <>
+          {/* 3D Spine Fold Shadow on Left Edge */}
+          <View
+            style={[
+              styles.spine,
+              {
+                width: dimensions.spineWidth,
+                borderTopLeftRadius: dimensions.radius,
+                borderBottomLeftRadius: dimensions.radius,
+                backgroundColor: palette.spine,
+              },
+            ]}
+          />
 
-        {/* Bottom Narrator Foil Stamp (Only on medium & hero) */}
-        {size !== 'small' && (
-          <View style={styles.footerRow}>
-            <View style={[styles.narratorPill, { borderColor: `${palette.accent}40` }]}>
+          {/* Subtle Embossed Foil Border */}
+          <View
+            style={[
+              styles.embossFrame,
+              {
+                borderRadius: Math.max(dimensions.radius - 3, 3),
+                borderColor: palette.accent,
+              },
+            ]}
+          />
+
+          {/* Cover Content */}
+          <View style={[styles.content, { paddingLeft: dimensions.spineWidth + 6 }]}>
+            {/* Top Decorative Emblem */}
+            <View style={styles.topRow}>
+              <Ionicons
+                name={palette.icon}
+                size={dimensions.iconSize}
+                color={palette.accent}
+                style={{ opacity: 0.85 }}
+              />
+            </View>
+
+            {/* Center Title */}
+            <View style={styles.titleWrapper}>
               <Text
-                style={[styles.narratorText, { color: palette.tag, fontSize: size === 'hero' ? 11 : 9 }]}
-                numberOfLines={1}
+                style={[
+                  styles.bookTitle,
+                  {
+                    fontSize: dimensions.titleSize,
+                    color: palette.text,
+                  },
+                ]}
+                numberOfLines={size === 'small' ? 3 : size === 'medium' ? 4 : 5}
               >
-                {voiceName ? `Narrated by ${voiceName}` : 'PaperEcho Edition'}
+                {cleanTitle}
               </Text>
             </View>
+
+            {/* Bottom Narrator Foil Stamp (Only on medium & hero) */}
+            {size !== 'small' && (
+              <View style={styles.footerRow}>
+                <View style={[styles.narratorPill, { borderColor: `${palette.accent}40` }]}>
+                  <Text
+                    style={[styles.narratorText, { color: palette.tag, fontSize: size === 'hero' ? 11 : 9 }]}
+                    numberOfLines={1}
+                  >
+                    {voiceName ? `Narrated by ${voiceName}` : 'PaperEcho Edition'}
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
-        )}
-      </View>
+        </>
+      )}
     </View>
   );
 }

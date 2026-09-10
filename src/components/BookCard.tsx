@@ -72,6 +72,7 @@ export function BookCard({ book, onPress, onRename, onDelete }: BookCardProps) {
       <BookCover 
         title={book.title} 
         voiceName={book.voiceName} 
+        coverUrl={book.coverUrl}
         size="small" 
         style={styles.coverThumbnail}
       />

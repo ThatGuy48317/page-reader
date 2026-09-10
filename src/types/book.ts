@@ -16,6 +16,7 @@ export interface Book {
   voiceName: string;
   documentType: string;
   detectedType?: string;
+  coverUrl?: string;
   createdAt: number;
   expiresAt?: number; // Expiration timestamp
   duration?: number; // seconds

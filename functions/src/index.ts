@@ -433,9 +433,55 @@ ${preCleanedText}`,
       // Extract chapters from the cleaned text
       const chapters = extractChapters(cleanText);
 
+/**
+ * Queries Google Books API and Open Library API to fetch high-quality public cover art.
+ * Costs $0 and uses 0 AI tokens.
+ */
+async function fetchBookCoverUrl(title: string, author?: string): Promise<string | undefined> {
+  if (!title || title === "Untitled Audiobook") return undefined;
+  
+  // 1. Primary Lookup: Google Books API (free public metadata endpoint)
+  try {
+    const qParams = author && author !== "Unknown Author" 
+      ? `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`
+      : encodeURIComponent(title);
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${qParams}&maxResults=1`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const imageLinks = data.items?.[0]?.volumeInfo?.imageLinks;
+      const img = imageLinks?.thumbnail || imageLinks?.smallThumbnail || imageLinks?.medium || imageLinks?.large;
+      if (img) {
+        return img.replace(/^http:\/\//i, 'https://');
+      }
+    }
+  } catch (e) {
+    console.warn("Google Books cover lookup failed:", e);
+  }
+
+  // 2. Secondary Fallback: Open Library Covers API
+  try {
+    const olUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=1`;
+    const res = await fetch(olUrl);
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const coverId = data.docs?.[0]?.cover_i;
+      if (coverId) {
+        return `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
+      }
+    }
+  } catch (e) {
+    console.warn("Open Library cover lookup failed:", e);
+  }
+
+  return undefined;
+}
+
       // ── Step 5b: Identify Book Title, Author, and Copyright Status ──
       let detectedTitle = bookId; 
       let detectedAuthor = "Unknown Author";
+      let coverUrl: string | undefined = undefined;
+
       try {
         const metadataResponse = await ai.models.generateContent({
           model: "gemini-3.6-flash",
@@ -459,8 +505,11 @@ ${rawText.substring(0, 3000)}`,
         const parsed = JSON.parse(cleanJson);
         if (parsed.title) detectedTitle = parsed.title;
         if (parsed.author) detectedAuthor = parsed.author;
+
+        // Fetch cover art from public metadata APIs (0 tokens, $0.00 cost)
+        coverUrl = await fetchBookCoverUrl(detectedTitle, detectedAuthor);
       } catch (e) {
-        console.error("Book metadata detection failed", e);
+        console.error("Book metadata or cover detection failed", e);
       }
 
       await updateStatus(userId, bookId, "generating_audio", 65, {
@@ -468,6 +517,7 @@ ${rawText.substring(0, 3000)}`,
         detectedType: targetStyle,
         detectedTitle,
         detectedAuthor,
+        coverUrl,
         chapters: chapters.map((c) => ({
           title: c.title,
           textOffset: c.textOffset,

@@ -79,6 +79,7 @@ export default function ProcessingScreen() {
           <BookCover 
             title={book.title} 
             voiceName={book.voiceName} 
+            coverUrl={book.coverUrl}
             size="medium" 
           />
         </View>

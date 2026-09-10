@@ -276,6 +276,7 @@ export default function BookPlayerScreen() {
           <BookCover 
             title={book.title} 
             voiceName={book.voiceName} 
+            coverUrl={book.coverUrl}
             size="hero" 
           />
         </View>
