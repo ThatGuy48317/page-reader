@@ -13,6 +13,7 @@ export const DOCUMENT_TYPES: DocumentType[] = [
   { id: 'poetry', name: 'Poetry', description: 'Rhythmic reading with cadence and deliberate pauses', emoji: '✍️' },
   { id: 'children', name: 'Children\'s Storybook', description: 'High-energy, warm, and playful storytelling', emoji: '🧸' },
   { id: 'tactile_children', name: 'Tactile / Touch & Feel', description: 'Includes 3-second tactile pauses between pages for sensory exploration and page turns', emoji: '🖐️' },
+  { id: 'periodical', name: 'Magazine & Newspaper', description: 'Multi-column journalism; filters ads, sidebars & photo captions', emoji: '📰' },
 ];
 
 export const DEFAULT_DOCUMENT_TYPE = 'auto';

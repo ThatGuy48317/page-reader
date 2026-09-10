@@ -274,29 +274,37 @@ export const processVideo = onCall(
                   },
                 },
                 {
-                  text: `You are an expert OCR and book transcription system. Extract ALL visible text from every page shown in this video.
-This video captures someone slowly turning through the physical pages of a book.
+                  text: `You are an expert OCR and publication transcription system. Extract ALL primary article and book prose from every page shown in this video.
+This video captures someone slowly turning through the physical pages of a book, magazine, newspaper, or periodical.
 
 Key Instructions:
-1. PAGE DETECTION & MOTION:
+1. MULTI-COLUMN & LAYOUT FLOW (CRITICAL FOR MAGAZINES & NEWSPAPERS):
+   - Magazines and newspapers frequently use 2, 3, or 4 vertical columns per page.
+   - You MUST read and transcribe each vertical column COMPLETELY from top to bottom before moving to the next column to the right (Column 1 top-to-bottom, then Column 2 top-to-bottom, etc.).
+   - NEVER read horizontally across columns, as this scrambles sentences together and makes text nonsensical.
+   - For articles that span across page turns, connect the text from the bottom of the last column of page 1 directly to the top of the first column of page 2.
+
+2. ADVERTISEMENTS & NON-CONTENT EXCLUSIONS (STRICT):
+   - COMPLETELY IGNORE and DO NOT TRANSCRIBE commercial advertisements (half-page, full-page, or banner ads).
+   - Exclude promotional slogans, coupon codes, sponsor notices, brand logos, product purchasing details, and marketing blurbs.
+   - Exclude enlarged "pull-quotes" (large callout quotes in decorative fonts that repeat sentences already present in the article body).
+   - Exclude photo captions, photo credits, and publication mastheads.
+   - Exclude running headers, issue dates, and standalone page numbers.
+
+3. PAGE DETECTION & MOTION:
    - Identify each distinct, settled page spread as it becomes stationary. Ignore blurry transition frames, hands, or pages in mid-turn.
-   - Transcribe each settled page completely in sequential reading order. Do NOT summarize or skip any paragraphs.
+   - Transcribe each settled page completely in sequential reading order. Do NOT summarize or omit body text.
    
-2. DEDUPLICATION:
+4. DEDUPLICATION:
    - When the camera dwells on a page across several seconds, output that page's text only ONCE. Do NOT repeat sentences or paragraphs.
    
-3. LINE BREAKS & HYPHENATION:
+5. LINE BREAKS & HYPHENATION:
    - Rejoin hyphenated words broken across line breaks (e.g. "dis-" on one line and "cover" on the next must become "discover").
-   - Connect sentences that begin at the bottom of one page and finish at the top of the next page into seamless, continuous text.
+   - Connect sentences that begin at the bottom of one page/column and finish at the top of the next page/column into seamless, continuous text.
 
-4. EXCLUSIONS:
-   - Exclude running headers (e.g. recurring book title or chapter title at the top margin of pages).
-   - Exclude standalone page numbers and footnote reference markers.
-   - Exclude decorative publisher ornaments.
-
-5. FORMATTING:
+6. FORMATTING:
    - Separate distinct paragraphs with double newlines.
-   - Mark chapter starts or major section titles with [CHAPTER: Chapter Title].`,
+   - Mark major article headlines, chapter starts, or section titles with [CHAPTER: Title].`,
                 },
               ],
             },
@@ -326,14 +334,15 @@ Key Instructions:
                 role: "user",
                 parts: [
                   {
-                    text: `Analyze the following book text excerpt and classify it into one of these categories:
+                    text: `Analyze the following text excerpt and classify it into one of these categories:
 - fiction (Fictional novels, stories, drama)
 - academic (Academic papers, research reports, scientific journals)
 - nonfiction (Non-fiction books, textbooks, biographies, user manuals)
+- periodical (Magazines, newspapers, journalism, periodicals, news articles, columns)
 - poetry (Poetry, verse, lyrics)
 - children (Children's books, simple stories)
 
-Return ONLY the name of the category (one of: fiction, academic, nonfiction, poetry, children). Do not write anything else.
+Return ONLY the name of the category (one of: fiction, academic, nonfiction, periodical, poetry, children). Do not write anything else.
 
 Text excerpt:
 ${rawText.substring(0, 3000)}`,
@@ -344,7 +353,7 @@ ${rawText.substring(0, 3000)}`,
           });
           addUsage((classificationResponse as any).usageMetadata);
           const classificationText = (classificationResponse.text || "nonfiction").trim().toLowerCase();
-          if (["fiction", "academic", "nonfiction", "poetry", "children"].includes(classificationText)) {
+          if (["fiction", "academic", "nonfiction", "periodical", "poetry", "children"].includes(classificationText)) {
             targetStyle = classificationText;
           } else {
             targetStyle = "nonfiction";
@@ -419,6 +428,21 @@ Rules:
 - Return clean, patient, engaging storytelling prose with page-turn pauses.
 - Do NOT add any commentary.`;
           ttsSystemInstruction = "Read in a warm, patient, playful storytelling voice with deliberate pauses between pages.";
+          break;
+
+        case "periodical":
+          cleaningPrompt = `Clean this magazine or newspaper article text for audiobook narration. The text was extracted from video frames of a multi-column periodical.
+Rules:
+- Ensure columns were assembled in correct top-to-bottom reading order so sentences flow logically and continuously.
+- Remove any remaining advertisement text, commercial slogans, brand sponsors, coupon codes, or product links.
+- Remove photo captions, photo credits, issue dates, and running headers/footers.
+- Remove "Continued on page..." or "Continued from page..." jump lines.
+- Preserve author bylines (e.g., "By Jane Doe") and datelines (e.g., "MINNEAPOLIS — ").
+- Format major article titles or section headlines as [CHAPTER: Article Title].
+- Do NOT rewrite, summarize, or alter the journalist's actual body prose. Keep the author's original words intact.
+- Return clean, articulate journalistic prose ready for text-to-speech narration.
+- Do NOT add any commentary.`;
+          ttsSystemInstruction = "Read in an articulate, clear, engaging journalistic narrator voice with crisp diction and natural pacing.";
           break;
 
         case "nonfiction":
@@ -574,6 +598,7 @@ ${rawText.substring(0, 3000)}`,
             break;
           case "children":
           case "tactile_children":
+          case "periodical":
             resolvedVoice = "Zephyr";
             break;
           default:
