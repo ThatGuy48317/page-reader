@@ -297,8 +297,15 @@ export default function BookPlayerScreen() {
           <View style={styles.tagRow}>
             {book.voiceName && (
               <View style={styles.narratorTag}>
-                <Ionicons name="mic-outline" size={12} color={Colors.primary} style={{ marginRight: 4 }} />
-                <Text style={styles.narratorTagText}>{book.voiceName}</Text>
+                <Ionicons 
+                  name={book.voiceName === 'auto' ? "people" : "mic-outline"} 
+                  size={12} 
+                  color={Colors.primary} 
+                  style={{ marginRight: 4 }} 
+                />
+                <Text style={styles.narratorTagText}>
+                  {book.voiceName === 'auto' ? 'Ensemble Cast' : book.voiceName}
+                </Text>
               </View>
             )}
 

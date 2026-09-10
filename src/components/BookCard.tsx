@@ -86,8 +86,15 @@ export function BookCard({ book, onPress, onRename, onDelete }: BookCardProps) {
         <View style={styles.metaRow}>
           {book.voiceName && (
             <View style={styles.narratorTag}>
-              <Ionicons name="mic-outline" size={10} color={Colors.primary} style={{ marginRight: 3 }} />
-              <Text style={styles.narratorTagText}>{book.voiceName}</Text>
+              <Ionicons 
+                name={book.voiceName === 'auto' ? "people" : "mic-outline"} 
+                size={10} 
+                color={Colors.primary} 
+                style={{ marginRight: 3 }} 
+              />
+              <Text style={styles.narratorTagText}>
+                {book.voiceName === 'auto' ? 'Ensemble Cast' : book.voiceName}
+              </Text>
             </View>
           )}
 

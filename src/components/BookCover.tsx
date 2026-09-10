@@ -184,7 +184,7 @@ export function BookCover({ title, voiceName, coverUrl, size = 'medium', style }
                     style={[styles.narratorText, { color: palette.tag, fontSize: size === 'hero' ? 11 : 9 }]}
                     numberOfLines={1}
                   >
-                    {voiceName ? `Narrated by ${voiceName}` : 'PaperEcho Edition'}
+                    {voiceName ? (voiceName === 'auto' ? 'Full Ensemble Cast' : `Narrated by ${voiceName}`) : 'PaperEcho Edition'}
                   </Text>
                 </View>
               </View>
