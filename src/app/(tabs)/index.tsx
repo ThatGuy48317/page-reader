@@ -1,11 +1,15 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { ref, deleteObject } from 'firebase/storage';
+import { db, auth, storage } from '@/lib/firebase';
 import { useBooks } from '@/hooks/useBooks';
 import { BookCard } from '@/components/BookCard';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { DEFAULT_USER_TIER } from '@/constants/monetization';
 import { Book } from '@/types/book';
 
 export default function LibraryScreen() {
@@ -19,6 +23,41 @@ export default function LibraryScreen() {
       router.push(`/processing/${book.id}`);
     }
   };
+
+  const handleDeleteBook = (book: Book) => {
+    Alert.alert(
+      'Delete Audiobook?',
+      `Are you sure you want to delete "${book.title || 'Untitled Audiobook'}"? This will permanently remove the recording and free up 1 slot in your ${DEFAULT_USER_TIER.name} quota.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const userId = auth.currentUser?.uid || 'anon';
+              const docRef = doc(db, 'users', userId, 'books', book.id);
+              await deleteDoc(docRef);
+
+              if (book.videoUri) {
+                const videoFileRef = ref(storage, book.videoUri);
+                deleteObject(videoFileRef).catch(() => {});
+              }
+              if (book.audioUri) {
+                const audioFileRef = ref(storage, book.audioUri);
+                deleteObject(audioFileRef).catch(() => {});
+              }
+            } catch (e) {
+              console.error('Failed to delete book:', e);
+              Alert.alert('Error', 'Could not delete the audiobook recording.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const isAtQuota = books.length >= DEFAULT_USER_TIER.maxConcurrentBooks;
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
@@ -48,8 +87,10 @@ export default function LibraryScreen() {
           <Text style={styles.headerSubtitle}>Personal Format-Shifted Audiobooks</Text>
         </View>
 
-        <View style={styles.headerBadge}>
-          <Text style={styles.headerCount}>{books.length} {books.length === 1 ? 'Title' : 'Titles'}</Text>
+        <View style={[styles.headerBadge, isAtQuota && styles.headerBadgeQuota]}>
+          <Text style={[styles.headerCount, isAtQuota && styles.headerCountQuota]}>
+            {books.length}/{DEFAULT_USER_TIER.maxConcurrentBooks} Titles ({DEFAULT_USER_TIER.name})
+          </Text>
         </View>
       </View>
 
@@ -59,7 +100,11 @@ export default function LibraryScreen() {
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         renderItem={({ item }) => (
-          <BookCard book={item} onPress={() => handlePressBook(item)} />
+          <BookCard 
+            book={item} 
+            onPress={() => handlePressBook(item)} 
+            onDelete={() => handleDeleteBook(item)}
+          />
         )}
         ListEmptyComponent={!loading ? renderEmpty : null}
         refreshControl={
@@ -109,11 +154,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  headerBadgeQuota: {
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderColor: 'rgba(245, 158, 11, 0.4)',
+  },
   headerCount: {
     fontSize: FontSize.xs,
     color: Colors.primary,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  headerCountQuota: {
+    color: '#fbbf24',
   },
   listContent: {
     padding: Spacing.lg,

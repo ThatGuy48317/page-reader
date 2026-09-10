@@ -10,9 +10,10 @@ import { getExpirationInfo } from '@/utils/expiration';
 interface BookCardProps {
   book: Book;
   onPress: () => void;
+  onDelete?: () => void;
 }
 
-export function BookCard({ book, onPress }: BookCardProps) {
+export function BookCard({ book, onPress, onDelete }: BookCardProps) {
   const isReady = book.status === 'ready';
   const expInfo = getExpirationInfo(book.expiresAt);
   
@@ -134,6 +135,19 @@ export function BookCard({ book, onPress }: BookCardProps) {
         )}
       </View>
 
+      {onDelete && (
+        <Pressable 
+          onPress={(e) => {
+            e.stopPropagation();
+            onDelete();
+          }}
+          style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}
+          hitSlop={8}
+        >
+          <Ionicons name="trash-outline" size={18} color={Colors.textTertiary} />
+        </Pressable>
+      )}
+
       <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} style={styles.chevron} />
     </Pressable>
   );
@@ -240,5 +254,15 @@ const styles = StyleSheet.create({
   },
   chevron: {
     marginLeft: 4,
+  },
+  deleteButton: {
+    padding: 8,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  deleteButtonPressed: {
+    backgroundColor: 'rgba(239, 68, 68, 0.15)',
   },
 });

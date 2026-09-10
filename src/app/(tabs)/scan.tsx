@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
@@ -10,14 +10,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { db, auth, functions } from '@/lib/firebase';
+import { useBooks } from '@/hooks/useBooks';
 import { DEFAULT_VOICE } from '@/constants/voices';
 import { DOCUMENT_TYPES, DEFAULT_DOCUMENT_TYPE } from '@/constants/documentTypes';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { DEFAULT_USER_TIER } from '@/constants/monetization';
 import { IPAgreementModal } from '@/components/IPAgreementModal';
 import { VoiceSelector } from '@/components/VoiceSelector';
 
 export default function ScanScreen() {
   const router = useRouter();
+  const { books } = useBooks();
   const [permission, requestPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [mode, setMode] = useState<'idle' | 'camera' | 'preview'>('idle');
@@ -72,7 +75,23 @@ export default function ScanScreen() {
     loadDefaultVoice();
   }, []);
 
+  const checkQuotaLimit = () => {
+    if (books.length >= DEFAULT_USER_TIER.maxConcurrentBooks) {
+      Alert.alert(
+        'Bookshelf Quota Reached',
+        `Your ${DEFAULT_USER_TIER.name} permits up to ${DEFAULT_USER_TIER.maxConcurrentBooks} active audiobooks on your bookshelf. Please delete an existing recording from your Library to digitize another book.`,
+        [
+          { text: 'Go to Library', onPress: () => router.push('/(tabs)') },
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
+      return true;
+    }
+    return false;
+  };
+
   const handleOpenRecord = async () => {
+    if (checkQuotaLimit()) return;
     if (!permission?.granted) {
       const camRes = await requestPermission();
       if (!camRes.granted) return;
@@ -109,6 +128,7 @@ export default function ScanScreen() {
   };
 
   const pickVideo = async () => {
+    if (checkQuotaLimit()) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       allowsEditing: true,
