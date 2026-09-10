@@ -6,6 +6,8 @@ import { TIERS } from '@/constants/monetization';
 import { fetchOfferings, purchaseSubscriptionPackage, restoreUserPurchases } from '@/lib/purchases';
 import { PurchasesPackage } from 'react-native-purchases';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '@/lib/firebase';
 
 interface PaywallModalProps {
   visible: boolean;
@@ -41,12 +43,24 @@ export function PaywallModal({ visible, onClose, onSuccess }: PaywallModalProps)
       if (targetPackage) {
         const res = await purchaseSubscriptionPackage(targetPackage);
         if (res.success) {
+          try {
+            const syncFn = httpsCallable(functions, 'syncUserSubscription');
+            await syncFn({ isPro: true, proPlan: selectedPlan });
+          } catch (syncErr) {
+            console.warn('syncUserSubscription fallback failed:', syncErr);
+          }
           Alert.alert('Welcome to Pro!', 'Your subscription is active. Enjoy unlimited audiobook creation.');
           onSuccess?.();
           onClose();
         }
       } else {
         // Fallback for Sandbox / Demo mode before RevenueCat keys are configured
+        try {
+          const syncFn = httpsCallable(functions, 'syncUserSubscription');
+          await syncFn({ isPro: true, proPlan: `${selectedPlan}_sandbox` });
+        } catch (syncErr) {
+          console.warn('syncUserSubscription demo failed:', syncErr);
+        }
         setTimeout(() => {
           Alert.alert('Demo Pro Plan Activated', 'You have successfully subscribed to PaperEcho Pro (Sandbox Mode).');
           onSuccess?.();
@@ -65,6 +79,12 @@ export function PaywallModal({ visible, onClose, onSuccess }: PaywallModalProps)
     try {
       const res = await restoreUserPurchases();
       if (res.isPro) {
+        try {
+          const syncFn = httpsCallable(functions, 'syncUserSubscription');
+          await syncFn({ isPro: true, proPlan: 'restored' });
+        } catch (syncErr) {
+          console.warn('syncUserSubscription restore failed:', syncErr);
+        }
         Alert.alert('Purchases Restored', 'Your PaperEcho Pro subscription has been restored.');
         onSuccess?.();
         onClose();

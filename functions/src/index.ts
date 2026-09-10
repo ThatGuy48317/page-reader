@@ -1,5 +1,5 @@
 import * as admin from "firebase-admin";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { GoogleGenAI } from "@google/genai";
 import { defineSecret } from "firebase-functions/params";
@@ -916,3 +916,116 @@ export const cleanupExpiredAudio = onSchedule("every 24 hours", async (event) =>
     console.error("Scheduled cleanup failed:", error);
   }
 });
+
+/**
+ * RevenueCat Webhook handler to synchronize subscription status with Firestore.
+ * Handles INITIAL_PURCHASE, RENEWAL, CANCELLATION, EXPIRATION, etc.
+ */
+export const revenueCatWebhook = onRequest(
+  {
+    cors: true,
+  },
+  async (req, res) => {
+    if (req.method !== "POST") {
+      res.status(405).send("Method Not Allowed");
+      return;
+    }
+
+    try {
+      const authHeader = req.headers.authorization;
+      const expectedSecret = process.env.REVENUECAT_WEBHOOK_SECRET;
+      if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+        console.warn("Unauthorized RevenueCat webhook attempt rejected.");
+        res.status(401).send("Unauthorized");
+        return;
+      }
+
+      const body = req.body;
+      const event = body?.event;
+      if (!event) {
+        res.status(400).send("Missing event body");
+        return;
+      }
+
+      const eventType = event.type;
+      const userId = event.app_user_id;
+      const entitlementIds: string[] = event.entitlement_ids || (event.entitlement_id ? [event.entitlement_id] : []);
+      const isProEntitlement = entitlementIds.includes("pro_access") || entitlementIds.some((id: string) => id.toLowerCase().includes("pro"));
+
+      console.log(`RevenueCat Webhook [${eventType}] for user: ${userId}, entitlements: ${entitlementIds.join(", ")}`);
+
+      if (!userId || userId === "anonymous") {
+        console.log("Skipping anonymous user webhook event");
+        res.status(200).send({ received: true, ignored: "anonymous" });
+        return;
+      }
+
+      let isPro = false;
+      if (isProEntitlement) {
+        if (
+          eventType === "INITIAL_PURCHASE" ||
+          eventType === "RENEWAL" ||
+          eventType === "UNCANCELLATION" ||
+          eventType === "PRODUCT_CHANGE" ||
+          eventType === "NON_RENEWING_PURCHASE"
+        ) {
+          isPro = true;
+        } else if (eventType === "EXPIRATION") {
+          isPro = false;
+        } else if (eventType === "CANCELLATION") {
+          const expirationAtMs = event.expiration_at_ms;
+          isPro = Boolean(expirationAtMs && expirationAtMs > Date.now());
+        }
+      }
+
+      const userRef = db.collection("users").doc(userId);
+      await userRef.set(
+        {
+          isPro,
+          proEntitlements: entitlementIds,
+          proPlan: event.product_id || null,
+          proExpiresAt: event.expiration_at_ms ? new Date(event.expiration_at_ms) : null,
+          proLastEvent: eventType,
+          proUpdatedAt: Date.now(),
+          proEnvironment: event.environment || "PRODUCTION",
+        },
+        { merge: true }
+      );
+
+      console.log(`Successfully updated isPro=${isPro} in Firestore for user ${userId}`);
+      res.status(200).send({ received: true, userId, isPro });
+    } catch (err) {
+      console.error("RevenueCat webhook error:", err);
+      res.status(500).send("Internal Server Error");
+    }
+  }
+);
+
+/**
+ * Callable function to immediately record or refresh Pro status after in-app purchase.
+ */
+export const syncUserSubscription = onCall(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated.");
+    }
+
+    const userId = request.auth.uid;
+    const { isPro, proPlan } = request.data;
+
+    console.log(`syncUserSubscription called by ${userId}: isPro=${isPro}`);
+
+    const userRef = db.collection("users").doc(userId);
+    await userRef.set(
+      {
+        isPro: Boolean(isPro),
+        proPlan: proPlan || "in_app_purchase",
+        proUpdatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+
+    return { success: true, isPro: Boolean(isPro) };
+  }
+);
+
