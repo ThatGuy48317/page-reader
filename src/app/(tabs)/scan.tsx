@@ -17,10 +17,12 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { DEFAULT_USER_TIER } from '@/constants/monetization';
 import { IPAgreementModal } from '@/components/IPAgreementModal';
 import { VoiceSelector } from '@/components/VoiceSelector';
+import { useAccessibility } from '@/context/AccessibilityContext';
 
 export default function ScanScreen() {
   const router = useRouter();
   const { books } = useBooks();
+  const { triggerHaptic } = useAccessibility();
   const [permission, requestPermission] = useCameraPermissions();
   const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [mode, setMode] = useState<'idle' | 'camera' | 'preview'>('idle');
@@ -105,6 +107,7 @@ export default function ScanScreen() {
   const startRecording = async () => {
     if (!cameraRef.current) return;
     setIsRecording(true);
+    triggerHaptic('notification');
     try {
       const video = await cameraRef.current.recordAsync({
         mute: !micPermission?.granted,
@@ -113,6 +116,7 @@ export default function ScanScreen() {
       if (video?.uri) {
         setVideoUri(video.uri);
         setMode('preview');
+        triggerHaptic('notification');
       }
     } catch (e) {
       console.error('Recording error:', e);
@@ -123,12 +127,14 @@ export default function ScanScreen() {
 
   const stopRecording = () => {
     if (cameraRef.current && isRecording) {
+      triggerHaptic('notification');
       cameraRef.current.stopRecording();
     }
   };
 
   const pickVideo = async () => {
     if (checkQuotaLimit()) return;
+    triggerHaptic('impact');
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
       allowsEditing: true,
@@ -137,6 +143,7 @@ export default function ScanScreen() {
     if (!result.canceled) {
       setVideoUri(result.assets[0].uri);
       setMode('preview');
+      triggerHaptic('notification');
     }
   };
 

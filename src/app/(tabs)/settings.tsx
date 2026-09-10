@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,10 +8,12 @@ import { VoiceSelector } from '@/components/VoiceSelector';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { DEFAULT_VOICE } from '@/constants/voices';
+import { useAccessibility } from '@/context/AccessibilityContext';
 
 export default function SettingsScreen() {
   const [selectedVoice, setSelectedVoice] = useState<string>(DEFAULT_VOICE);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const { accessibilityMode, toggleAccessibilityMode } = useAccessibility();
 
   useEffect(() => {
     const loadVoice = async () => {
@@ -63,6 +65,28 @@ export default function SettingsScreen() {
               <Text style={styles.label}>Authenticated User</Text>
               <Text style={styles.value}>{auth.currentUser?.email || 'Anonymous Session'}</Text>
             </View>
+          </View>
+        </View>
+
+        {/* Accessibility & Visuals Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Accessibility & Assistive Tech</Text>
+          <View style={styles.card}>
+            <View style={styles.iconCircle}>
+              <Ionicons name="eye-outline" size={18} color={Colors.primary} />
+            </View>
+            <View style={styles.accountInfo}>
+              <Text style={styles.legalTitle}>Accessibility Mode</Text>
+              <Text style={styles.legalSubtitle}>AAA High Contrast, Screen Reader Optimization & Tactile Haptic Feedback</Text>
+            </View>
+            <Switch
+              value={accessibilityMode}
+              onValueChange={(val) => toggleAccessibilityMode(val)}
+              trackColor={{ false: Colors.surfaceElevated, true: Colors.primary }}
+              thumbColor="#ffffff"
+              accessibilityLabel="Accessibility Mode Switch"
+              accessibilityHint="Toggles high contrast theme, tactile haptics, and enhanced screen reader attributes."
+            />
           </View>
         </View>
 

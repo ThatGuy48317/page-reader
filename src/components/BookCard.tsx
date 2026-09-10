@@ -67,6 +67,9 @@ export function BookCard({ book, onPress, onRename, onDelete }: BookCardProps) {
     <Pressable 
       style={({ pressed }) => [styles.card, pressed && styles.cardPressed]} 
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`Audiobook ${book.title || 'Untitled'}, status ${getStatusText(book.status)}`}
+      accessibilityHint="Double tap to open audiobook details or playback screen."
     >
       {/* Mini Book Cover Jacket Thumbnail */}
       <BookCover 
@@ -153,6 +156,9 @@ export function BookCard({ book, onPress, onRename, onDelete }: BookCardProps) {
             }}
             style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
             hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`Rename ${book.title || 'Audiobook'}`}
+            accessibilityHint="Double tap to open title edit dialog."
           >
             <Ionicons name="pencil-outline" size={16} color={Colors.textTertiary} />
           </Pressable>
@@ -166,6 +172,9 @@ export function BookCard({ book, onPress, onRename, onDelete }: BookCardProps) {
             }}
             style={({ pressed }) => [styles.actionButton, pressed && styles.deleteButtonPressed]}
             hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={`Delete ${book.title || 'Audiobook'}`}
+            accessibilityHint="Double tap to remove this audiobook from your bookshelf."
           >
             <Ionicons name="trash-outline" size={16} color={Colors.textTertiary} />
           </Pressable>

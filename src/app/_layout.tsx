@@ -7,6 +7,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
+import { AccessibilityProvider } from '@/context/AccessibilityContext';
 
 export default function RootLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -43,15 +44,17 @@ export default function RootLayout() {
   }
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0f172a' } }}>
-        <Stack.Screen name="auth" />
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="book/[id]" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="processing/[id]" />
-      </Stack>
-    </SafeAreaProvider>
+    <AccessibilityProvider>
+      <SafeAreaProvider>
+        <StatusBar style="light" />
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0f172a' } }}>
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="book/[id]" options={{ presentation: 'modal' }} />
+          <Stack.Screen name="processing/[id]" />
+        </Stack>
+      </SafeAreaProvider>
+    </AccessibilityProvider>
   );
 }
 

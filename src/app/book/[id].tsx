@@ -17,6 +17,7 @@ import { RenameModal } from '@/components/RenameModal';
 import { BookCover } from '@/components/BookCover';
 import { savePlaybackPosition, getPlaybackPosition } from '@/lib/storage';
 import { getExpirationInfo } from '@/utils/expiration';
+import { useAccessibility } from '@/context/AccessibilityContext';
 
 const formatTime = (seconds: number) => {
   if (isNaN(seconds) || seconds < 0) return '0:00';
@@ -34,6 +35,7 @@ const formatRemainingTime = (duration: number, position: number) => {
 export default function BookPlayerScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { triggerHaptic } = useAccessibility();
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [playableUrl, setPlayableUrl] = useState<string | undefined>(undefined);
@@ -387,9 +389,15 @@ export default function BookPlayerScreen() {
             <View style={styles.controlsRow}>
               {/* Skip Back 15s */}
               <TouchableOpacity 
-                onPress={() => skipBack(15)} 
+                onPress={() => {
+                  triggerHaptic('impact');
+                  skipBack(15);
+                }} 
                 style={styles.skipButton} 
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Skip backward 15 seconds"
+                accessibilityHint="Rewinds audio playback by 15 seconds"
               >
                 <Ionicons name="reload" size={22} color={Colors.textSecondary} style={{ transform: [{ scaleX: -1 }] }} />
                 <Text style={styles.skipLabel}>15</Text>
@@ -398,9 +406,15 @@ export default function BookPlayerScreen() {
               {/* Center Hero Play / Pause Disc */}
               <TouchableOpacity 
                 style={[styles.playButton, isAudioBuffering && styles.playButtonBuffering]} 
-                onPress={isPlaying ? pause : play}
+                onPress={() => {
+                  triggerHaptic('selection');
+                  isPlaying ? pause() : play();
+                }}
                 disabled={isAudioBuffering}
                 activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={isPlaying ? "Pause playback" : "Play playback"}
+                accessibilityHint="Toggles audiobook audio playback"
               >
                 {isAudioBuffering ? (
                   <ActivityIndicator size="small" color="#000000" />
@@ -416,9 +430,15 @@ export default function BookPlayerScreen() {
 
               {/* Skip Forward 15s */}
               <TouchableOpacity 
-                onPress={() => skipForward(15)} 
+                onPress={() => {
+                  triggerHaptic('impact');
+                  skipForward(15);
+                }} 
                 style={styles.skipButton} 
                 activeOpacity={0.7}
+                accessibilityRole="button"
+                accessibilityLabel="Skip forward 15 seconds"
+                accessibilityHint="Fast forwards audio playback by 15 seconds"
               >
                 <Ionicons name="reload" size={22} color={Colors.textSecondary} />
                 <Text style={styles.skipLabel}>15</Text>
@@ -431,8 +451,14 @@ export default function BookPlayerScreen() {
                 <TouchableOpacity 
                   key={r} 
                   style={[styles.speedChip, rate === r && styles.speedChipActive]}
-                  onPress={() => setRate(r)}
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    setRate(r);
+                  }}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Playback speed ${r}x`}
+                  accessibilityState={{ selected: rate === r }}
                 >
                   <Text style={[styles.speedChipText, rate === r && styles.speedChipTextActive]}>
                     {r}x
@@ -465,8 +491,14 @@ export default function BookPlayerScreen() {
                       isCurrent && styles.chapterRowActive, 
                       index === (book.chapters?.length || 0) - 1 && { borderBottomWidth: 0 }
                     ]}
-                    onPress={() => seekTo(chap.startTime)}
+                    onPress={() => {
+                      triggerHaptic('selection');
+                      seekTo(chap.startTime);
+                    }}
                     activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Chapter ${index + 1}: ${chap.title}, starts at ${formatTime(chap.startTime)}`}
+                    accessibilityState={{ selected: isCurrent }}
                   >
                     <View style={[styles.chapterNumberBadge, isCurrent && styles.chapterNumberBadgeActive]}>
                       <Text style={[styles.chapterNumberText, isCurrent && styles.chapterNumberTextActive]}>
