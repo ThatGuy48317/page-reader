@@ -114,6 +114,7 @@ export default function ScanScreen() {
       const video = await cameraRef.current.recordAsync({
         mute: !micPermission?.granted,
         maxDuration: 300,
+        maxFileSize: 150 * 1024 * 1024, // 150MB cap to guarantee fast background upload
       });
       if (video?.uri) {
         setVideoUri(video.uri);
@@ -284,6 +285,9 @@ export default function ScanScreen() {
           ref={cameraRef} 
           mode="video" 
           facing="back" 
+          videoQuality="720p"
+          videoBitrate={2500000}
+          videoStabilizationMode="standard"
           enableTorch={torchEnabled}
         />
         <SafeAreaView style={[StyleSheet.absoluteFill, styles.cameraOverlay]} pointerEvents="box-none">
