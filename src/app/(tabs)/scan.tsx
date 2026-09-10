@@ -17,6 +17,7 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { DEFAULT_USER_TIER } from '@/constants/monetization';
 import { IPAgreementModal } from '@/components/IPAgreementModal';
 import { VoiceSelector } from '@/components/VoiceSelector';
+import { PaywallModal } from '@/components/PaywallModal';
 import { useAccessibility } from '@/context/AccessibilityContext';
 
 export default function ScanScreen() {
@@ -37,6 +38,7 @@ export default function ScanScreen() {
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE);
   const [documentType, setDocumentType] = useState(DEFAULT_DOCUMENT_TYPE);
   const [showIPModal, setShowIPModal] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
   
   const cameraRef = useRef<any>(null);
   const timerRef = useRef<any>(null);
@@ -427,6 +429,11 @@ export default function ScanScreen() {
           triggerUploadAndProcess();
         }}
         onCancel={() => setShowIPModal(false)}
+      />
+
+      <PaywallModal 
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
       />
     </SafeAreaView>
   );

@@ -9,6 +9,7 @@ import { db, auth, storage } from '@/lib/firebase';
 import { useBooks } from '@/hooks/useBooks';
 import { BookCard } from '@/components/BookCard';
 import { RenameModal } from '@/components/RenameModal';
+import { PaywallModal } from '@/components/PaywallModal';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { DEFAULT_USER_TIER } from '@/constants/monetization';
 import { Book } from '@/types/book';
@@ -17,6 +18,7 @@ export default function LibraryScreen() {
   const { books, loading, refreshBooks } = useBooks();
   const router = useRouter();
   const [renameTarget, setRenameTarget] = useState<Book | null>(null);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   const handlePressBook = (book: Book) => {
     if (book.status === 'ready') {
@@ -104,11 +106,15 @@ export default function LibraryScreen() {
           <Text style={styles.headerSubtitle}>Personal Format-Shifted Audiobooks</Text>
         </View>
 
-        <View style={[styles.headerBadge, isAtQuota && styles.headerBadgeQuota]}>
+        <TouchableOpacity 
+          style={[styles.headerBadge, isAtQuota && styles.headerBadgeQuota]}
+          onPress={() => setShowPaywall(true)}
+          activeOpacity={0.7}
+        >
           <Text style={[styles.headerCount, isAtQuota && styles.headerCountQuota]}>
-            {books.length}/{DEFAULT_USER_TIER.maxConcurrentBooks} Titles ({DEFAULT_USER_TIER.name})
+            {books.length}/{DEFAULT_USER_TIER.maxConcurrentBooks} Titles ({DEFAULT_USER_TIER.name}) ✨
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <FlatList
@@ -140,6 +146,11 @@ export default function LibraryScreen() {
         currentTitle={renameTarget?.title || ''}
         onSave={handleSaveRename}
         onCancel={() => setRenameTarget(null)}
+      />
+
+      <PaywallModal 
+        visible={showPaywall}
+        onClose={() => setShowPaywall(false)}
       />
     </SafeAreaView>
   );

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/lib/firebase';
 import { VoiceSelector } from '@/components/VoiceSelector';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
+import { PaywallModal } from '@/components/PaywallModal';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { DEFAULT_VOICE } from '@/constants/voices';
 import { useAccessibility } from '@/context/AccessibilityContext';
@@ -13,6 +14,7 @@ import { useAccessibility } from '@/context/AccessibilityContext';
 export default function SettingsScreen() {
   const [selectedVoice, setSelectedVoice] = useState<string>(DEFAULT_VOICE);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
+  const [showPaywallModal, setShowPaywallModal] = useState<boolean>(false);
   const { accessibilityMode, toggleAccessibilityMode } = useAccessibility();
 
   useEffect(() => {
@@ -98,6 +100,27 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Subscription Plan Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Subscription Plan</Text>
+          <TouchableOpacity 
+            style={styles.legalCard}
+            onPress={() => setShowPaywallModal(true)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.legalRow}>
+              <View style={styles.legalIconContainer}>
+                <Ionicons name="sparkles" size={20} color={Colors.primary} />
+              </View>
+              <View style={styles.legalTextContainer}>
+                <Text style={styles.legalTitle}>PaperEcho Starter (Free Tier)</Text>
+                <Text style={styles.legalSubtitle}>5 Active audiobooks limit • Upgrade for unlimited titles & ensemble narrators</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.textTertiary} />
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* Legal & Compliance */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Legal & Fair Use</Text>
@@ -136,6 +159,11 @@ export default function SettingsScreen() {
       <TermsOfServiceModal 
         visible={showTermsModal} 
         onClose={() => setShowTermsModal(false)} 
+      />
+
+      <PaywallModal 
+        visible={showPaywallModal} 
+        onClose={() => setShowPaywallModal(false)} 
       />
     </SafeAreaView>
   );
