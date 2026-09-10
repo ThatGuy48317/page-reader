@@ -8,6 +8,7 @@ import { auth } from '@/lib/firebase';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { AccessibilityProvider } from '@/context/AccessibilityContext';
+import { VerifyEmailModal } from '@/components/VerifyEmailModal';
 
 export default function RootLayout() {
   const [user, setUser] = useState<User | null>(null);
@@ -43,6 +44,12 @@ export default function RootLayout() {
     );
   }
 
+  const isPasswordUserUnverified = Boolean(
+    user && 
+    !user.emailVerified && 
+    user.providerData.some(p => p.providerId === 'password')
+  );
+
   return (
     <AccessibilityProvider>
       <SafeAreaProvider>
@@ -53,6 +60,19 @@ export default function RootLayout() {
           <Stack.Screen name="book/[id]" options={{ presentation: 'modal' }} />
           <Stack.Screen name="processing/[id]" />
         </Stack>
+
+        <VerifyEmailModal 
+          visible={isPasswordUserUnverified}
+          userEmail={user?.email || ''}
+          onVerified={() => {
+            if (auth.currentUser) {
+              setUser({ ...auth.currentUser });
+            }
+          }}
+          onSignOut={async () => {
+            await auth.signOut();
+          }}
+        />
       </SafeAreaProvider>
     </AccessibilityProvider>
   );

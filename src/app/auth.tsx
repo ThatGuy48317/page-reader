@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
+  sendEmailVerification,
   GoogleAuthProvider, 
   signInWithPopup, 
   signInWithCredential 
@@ -124,7 +125,14 @@ export default function AuthScreen() {
       if (isLogin) {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth, email, password);
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        if (userCred.user) {
+          try {
+            await sendEmailVerification(userCred.user);
+          } catch (verErr) {
+            console.warn('Verification email error:', verErr);
+          }
+        }
       }
     } catch (err: any) {
       console.error('Auth error:', err);
