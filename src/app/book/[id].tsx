@@ -13,6 +13,7 @@ import { Book, Chapter } from '@/types/book';
 import { VOICES } from '@/constants/voices';
 import { DOCUMENT_TYPES } from '@/constants/documentTypes';
 import { VoiceSelector } from '@/components/VoiceSelector';
+import { RenameModal } from '@/components/RenameModal';
 import { BookCover } from '@/components/BookCover';
 import { savePlaybackPosition, getPlaybackPosition } from '@/lib/storage';
 import { getExpirationInfo } from '@/utils/expiration';
@@ -38,11 +39,26 @@ export default function BookPlayerScreen() {
   const [playableUrl, setPlayableUrl] = useState<string | undefined>(undefined);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showRenameModal, setShowRenameModal] = useState(false);
   const [selectedVoice, setSelectedVoice] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('auto');
   const [isReprocessing, setIsReprocessing] = useState(false);
   const [hasAutoResumed, setHasAutoResumed] = useState(false);
   const [resumeMessage, setResumeMessage] = useState<string | null>(null);
+
+  const handleSaveTitle = async (newTitle: string) => {
+    if (!book) return;
+    try {
+      const docRef = doc(db, 'users', auth.currentUser?.uid || 'anon', 'books', book.id);
+      // STRICT INVARIANT: Only update title. Retention timer (expiresAt) and audio URIs remain untouched.
+      await updateDoc(docRef, { title: newTitle });
+      setBook(prev => prev ? { ...prev, title: newTitle } : null);
+    } catch (e) {
+      console.error('Failed to rename title:', e);
+    } finally {
+      setShowRenameModal(false);
+    }
+  };
 
   const { 
     isPlaying, position, duration, rate, isLoading,
@@ -266,9 +282,16 @@ export default function BookPlayerScreen() {
 
         {/* Title & Metadata Block */}
         <View style={styles.metadataBlock}>
-          <Text style={styles.bookTitle} numberOfLines={2}>
-            {book.title || 'Untitled Audiobook'}
-          </Text>
+          <TouchableOpacity 
+            style={styles.titleClickableRow} 
+            onPress={() => setShowRenameModal(true)}
+            activeOpacity={0.75}
+          >
+            <Text style={styles.bookTitle} numberOfLines={2}>
+              {book.title || 'Untitled Audiobook'}
+            </Text>
+            <Ionicons name="pencil" size={14} color={Colors.textTertiary} style={{ marginLeft: 6, marginTop: -4 }} />
+          </TouchableOpacity>
           
           <View style={styles.tagRow}>
             {book.voiceName && (
@@ -519,6 +542,13 @@ export default function BookPlayerScreen() {
           </View>
         </View>
       </Modal>
+
+      <RenameModal
+        visible={showRenameModal}
+        currentTitle={book?.title || ''}
+        onSave={handleSaveTitle}
+        onCancel={() => setShowRenameModal(false)}
+      />
     </SafeAreaView>
   );
 }
@@ -627,6 +657,14 @@ const styles = StyleSheet.create({
   coverWrapper: {
     alignItems: 'center',
     marginVertical: Spacing.md,
+  },
+  titleClickableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginBottom: Spacing.sm,
   },
   metadataBlock: {
     alignItems: 'center',

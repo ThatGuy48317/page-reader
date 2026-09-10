@@ -1,13 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { ref, deleteObject } from 'firebase/storage';
 import { db, auth, storage } from '@/lib/firebase';
 import { useBooks } from '@/hooks/useBooks';
 import { BookCard } from '@/components/BookCard';
+import { RenameModal } from '@/components/RenameModal';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { DEFAULT_USER_TIER } from '@/constants/monetization';
 import { Book } from '@/types/book';
@@ -15,12 +16,28 @@ import { Book } from '@/types/book';
 export default function LibraryScreen() {
   const { books, loading, refreshBooks } = useBooks();
   const router = useRouter();
+  const [renameTarget, setRenameTarget] = useState<Book | null>(null);
 
   const handlePressBook = (book: Book) => {
     if (book.status === 'ready') {
       router.push(`/book/${book.id}`);
     } else {
       router.push(`/processing/${book.id}`);
+    }
+  };
+
+  const handleSaveRename = async (newTitle: string) => {
+    if (!renameTarget) return;
+    try {
+      const userId = auth.currentUser?.uid || 'anon';
+      const docRef = doc(db, 'users', userId, 'books', renameTarget.id);
+      // STRICT INVARIANT: Only update title field. Retention clock (expiresAt), createdAt, and audio settings are preserved intact.
+      await updateDoc(docRef, { title: newTitle });
+    } catch (e) {
+      console.error('Failed to rename book:', e);
+      Alert.alert('Error', 'Could not rename the audiobook.');
+    } finally {
+      setRenameTarget(null);
     }
   };
 
@@ -102,7 +119,8 @@ export default function LibraryScreen() {
         renderItem={({ item }) => (
           <BookCard 
             book={item} 
-            onPress={() => handlePressBook(item)} 
+            onPress={() => handlePressBook(item)}
+            onRename={() => setRenameTarget(item)} 
             onDelete={() => handleDeleteBook(item)}
           />
         )}
@@ -115,6 +133,13 @@ export default function LibraryScreen() {
             colors={[Colors.primary]}
           />
         }
+      />
+
+      <RenameModal 
+        visible={!!renameTarget}
+        currentTitle={renameTarget?.title || ''}
+        onSave={handleSaveRename}
+        onCancel={() => setRenameTarget(null)}
       />
     </SafeAreaView>
   );

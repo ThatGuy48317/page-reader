@@ -10,10 +10,11 @@ import { getExpirationInfo } from '@/utils/expiration';
 interface BookCardProps {
   book: Book;
   onPress: () => void;
+  onRename?: () => void;
   onDelete?: () => void;
 }
 
-export function BookCard({ book, onPress, onDelete }: BookCardProps) {
+export function BookCard({ book, onPress, onRename, onDelete }: BookCardProps) {
   const isReady = book.status === 'ready';
   const expInfo = getExpirationInfo(book.expiresAt);
   
@@ -135,18 +136,33 @@ export function BookCard({ book, onPress, onDelete }: BookCardProps) {
         )}
       </View>
 
-      {onDelete && (
-        <Pressable 
-          onPress={(e) => {
-            e.stopPropagation();
-            onDelete();
-          }}
-          style={({ pressed }) => [styles.deleteButton, pressed && styles.deleteButtonPressed]}
-          hitSlop={8}
-        >
-          <Ionicons name="trash-outline" size={18} color={Colors.textTertiary} />
-        </Pressable>
-      )}
+      <View style={styles.actionsGroup}>
+        {onRename && (
+          <Pressable 
+            onPress={(e) => {
+              e.stopPropagation();
+              onRename();
+            }}
+            style={({ pressed }) => [styles.actionButton, pressed && styles.actionButtonPressed]}
+            hitSlop={6}
+          >
+            <Ionicons name="pencil-outline" size={16} color={Colors.textTertiary} />
+          </Pressable>
+        )}
+
+        {onDelete && (
+          <Pressable 
+            onPress={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            style={({ pressed }) => [styles.actionButton, pressed && styles.deleteButtonPressed]}
+            hitSlop={6}
+          >
+            <Ionicons name="trash-outline" size={16} color={Colors.textTertiary} />
+          </Pressable>
+        )}
+      </View>
 
       <Ionicons name="chevron-forward" size={16} color={Colors.textTertiary} style={styles.chevron} />
     </Pressable>
@@ -255,12 +271,20 @@ const styles = StyleSheet.create({
   chevron: {
     marginLeft: 4,
   },
-  deleteButton: {
-    padding: 8,
+  actionsGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  actionButton: {
+    padding: 6,
     borderRadius: BorderRadius.full,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  actionButtonPressed: {
+    backgroundColor: 'rgba(226, 179, 80, 0.15)',
   },
   deleteButtonPressed: {
     backgroundColor: 'rgba(239, 68, 68, 0.15)',
