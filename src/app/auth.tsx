@@ -39,19 +39,30 @@ export default function AuthScreen() {
 
   useEffect(() => {
     if (response?.type === 'success') {
-      const { id_token } = response.params;
-      if (id_token) {
+      const idToken = response.params?.id_token || response.authentication?.idToken;
+      if (idToken) {
         setLoading(true);
-        const credential = GoogleAuthProvider.credential(id_token);
+        const credential = GoogleAuthProvider.credential(idToken);
         signInWithCredential(auth, credential)
           .catch((err) => {
-            console.error(err);
+            console.error('Google Firebase Sign-In error:', err);
             setError(err.message || 'Google authentication failed.');
           })
           .finally(() => {
             setLoading(false);
           });
+      } else {
+        console.warn('Google Auth response missing id_token:', response);
+        setError('Google authentication succeeded but no ID token was returned.');
+        setLoading(false);
       }
+    } else if (response?.type === 'error') {
+      console.error('Google Auth error:', response.error);
+      const errMsg = (response.error as any)?.message || (response.error as any)?.description || 'Google sign-in failed.';
+      setError(errMsg);
+      setLoading(false);
+    } else if (response?.type === 'dismiss') {
+      setLoading(false);
     }
   }, [response]);
 
@@ -68,24 +79,20 @@ export default function AuthScreen() {
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
       } else {
-        if (!process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID && Platform.OS === 'android') {
-          setError('Google Sign-In on Android requires an OAuth Client ID in .env. For quick testing, use Email/Password sign-in.');
-          setLoading(false);
-          return;
-        }
         if (promptAsync) {
-          await promptAsync();
+          const res = await promptAsync();
+          if (res?.type === 'dismiss' || res?.type === 'cancel') {
+            setLoading(false);
+          }
         } else {
           setError('Google Sign-In is initializing...');
+          setLoading(false);
         }
       }
     } catch (err: any) {
-      console.error(err);
+      console.error('Google sign-in exception:', err);
       setError(err.message || 'Google sign-in failed');
-    } finally {
-      if (Platform.OS === 'web') {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   };
 
