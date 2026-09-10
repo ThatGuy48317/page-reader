@@ -37,13 +37,12 @@ export function getExpirationInfo(expiresAt?: number): ExpirationInfo {
   }
 
   const hoursRemaining = Math.floor(msRemaining / (1000 * 60 * 60));
-  const daysRemaining = Math.floor(hoursRemaining / 24);
-  const leftoverHours = hoursRemaining % 24;
 
   if (hoursRemaining < 24) {
+    const hrs = hoursRemaining <= 0 ? 1 : hoursRemaining;
     return {
       isExpired: false,
-      label: `⚠️ Expires in ${hoursRemaining}h`,
+      label: `⚠️ ${hrs} ${hrs === 1 ? 'hour' : 'hours'} left`,
       badgeBg: 'rgba(245, 158, 11, 0.15)',
       badgeBorder: 'rgba(245, 158, 11, 0.4)',
       badgeTextColor: '#fbbf24',
@@ -51,9 +50,11 @@ export function getExpirationInfo(expiresAt?: number): ExpirationInfo {
     };
   }
 
+  const daysRemaining = Math.ceil(hoursRemaining / 24);
+
   return {
     isExpired: false,
-    label: `⏳ ${daysRemaining}d ${leftoverHours}h left`,
+    label: `⏳ ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} left`,
     badgeBg: 'rgba(59, 130, 246, 0.12)',
     badgeBorder: 'rgba(59, 130, 246, 0.25)',
     badgeTextColor: '#93c5fd',
