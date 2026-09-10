@@ -155,6 +155,9 @@ export const processVideo = onCall(
     if (!request.auth) {
       throw new HttpsError("unauthenticated", "User must be authenticated.");
     }
+    if (!request.auth.token.email_verified) {
+      throw new HttpsError("permission-denied", "Email address must be verified to process audiobooks.");
+    }
 
     const userId = request.auth.uid;
     const { bookId, videoPath, voiceName = "Kore", documentType = "auto" } = request.data;
