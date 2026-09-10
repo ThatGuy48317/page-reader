@@ -5,6 +5,7 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 
 export default function RootLayout() {
@@ -42,7 +43,7 @@ export default function RootLayout() {
   }
 
   return (
-    <>
+    <SafeAreaProvider>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: '#0f172a' } }}>
         <Stack.Screen name="auth" />
@@ -50,7 +51,7 @@ export default function RootLayout() {
         <Stack.Screen name="book/[id]" options={{ presentation: 'modal' }} />
         <Stack.Screen name="processing/[id]" />
       </Stack>
-    </>
+    </SafeAreaProvider>
   );
 }
 
