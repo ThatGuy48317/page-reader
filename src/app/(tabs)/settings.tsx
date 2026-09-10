@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { auth } from '@/lib/firebase';
+import { deleteUser } from 'firebase/auth';
+import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { db, auth } from '@/lib/firebase';
 import { VoiceSelector } from '@/components/VoiceSelector';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { PaywallModal } from '@/components/PaywallModal';
@@ -15,6 +17,7 @@ export default function SettingsScreen() {
   const [selectedVoice, setSelectedVoice] = useState<string>(DEFAULT_VOICE);
   const [showTermsModal, setShowTermsModal] = useState<boolean>(false);
   const [showPaywallModal, setShowPaywallModal] = useState<boolean>(false);
+  const [deleting, setDeleting] = useState(false);
   const { accessibilityMode, toggleAccessibilityMode } = useAccessibility();
 
   useEffect(() => {
@@ -46,6 +49,53 @@ export default function SettingsScreen() {
     } catch (e) {
       console.error('Sign out error', e);
     }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account & All Data?',
+      'This will permanently delete your user account, audiobooks, and all stored recordings. This action is irreversible.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Everything',
+          style: 'destructive',
+          onPress: async () => {
+            const currentUser = auth.currentUser;
+            if (!currentUser) return;
+            setDeleting(true);
+            try {
+              // 1. Wipe Firestore bookshelf documents
+              const booksCol = collection(db, 'users', currentUser.uid, 'books');
+              const snaps = await getDocs(booksCol);
+              for (const bookSnap of snaps.docs) {
+                await deleteDoc(doc(db, 'users', currentUser.uid, 'books', bookSnap.id));
+              }
+
+              // 2. Clear local AsyncStorage keys
+              await AsyncStorage.removeItem('paperecho_default_voice');
+              await AsyncStorage.removeItem('@paperecho_accessibility_mode');
+
+              // 3. Delete Firebase Auth User
+              await deleteUser(currentUser);
+              Alert.alert('Account Deleted', 'Your account and all associated data have been permanently erased.');
+            } catch (err: any) {
+              console.error('Account deletion error:', err);
+              if (err.code === 'auth/requires-recent-login') {
+                Alert.alert(
+                  'Recent Login Required',
+                  'For your security, please sign out and sign in again before deleting your account.'
+                );
+              } else {
+                Alert.alert('Error', err.message || 'Failed to delete account.');
+              }
+            } finally {
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -142,11 +192,27 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Sign Out */}
+        {/* Sign Out & Account Deletion (Apple Guideline 5.1.1) */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut} activeOpacity={0.7}>
             <Ionicons name="log-out-outline" size={18} color={Colors.error} style={{ marginRight: 8 }} />
             <Text style={styles.signOutText}>Sign Out</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.deleteAccountButton, deleting && { opacity: 0.5 }]} 
+            onPress={handleDeleteAccount} 
+            disabled={deleting}
+            activeOpacity={0.7}
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color={Colors.error} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={16} color={Colors.textTertiary} style={{ marginRight: 6 }} />
+                <Text style={styles.deleteAccountText}>Delete Account & Erase All Data</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -293,11 +359,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.3)',
+    marginBottom: Spacing.sm,
   },
   signOutText: {
     color: Colors.error,
     fontSize: FontSize.sm,
     fontWeight: '700',
+  },
+  deleteAccountButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.sm,
+  },
+  deleteAccountText: {
+    color: Colors.textTertiary,
+    fontSize: FontSize.xs,
+    fontWeight: '600',
   },
   footer: {
     alignItems: 'center',

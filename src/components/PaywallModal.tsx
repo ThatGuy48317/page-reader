@@ -5,6 +5,7 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { TIERS } from '@/constants/monetization';
 import { fetchOfferings, purchaseSubscriptionPackage, restoreUserPurchases } from '@/lib/purchases';
 import { PurchasesPackage } from 'react-native-purchases';
+import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 
 interface PaywallModalProps {
   visible: boolean;
@@ -16,6 +17,7 @@ export function PaywallModal({ visible, onClose, onSuccess }: PaywallModalProps)
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'annual'>('annual');
   const [loading, setLoading] = useState(false);
   const [restoring, setRestoring] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
   const [packages, setPackages] = useState<{ monthly?: PurchasesPackage; annual?: PurchasesPackage }>({});
 
   useEffect(() => {
@@ -171,7 +173,7 @@ export function PaywallModal({ visible, onClose, onSuccess }: PaywallModalProps)
               )}
             </TouchableOpacity>
 
-            {/* Footer Links */}
+            {/* Footer Links (Mandatory Apple Guideline 3.1.2) */}
             <View style={styles.footerRow}>
               <TouchableOpacity onPress={handleRestore} disabled={restoring} activeOpacity={0.7}>
                 <Text style={styles.footerLink}>
@@ -179,17 +181,26 @@ export function PaywallModal({ visible, onClose, onSuccess }: PaywallModalProps)
                 </Text>
               </TouchableOpacity>
               <Text style={styles.footerDot}>•</Text>
-              <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
-                <Text style={styles.footerLink}>Keep Free Tier</Text>
+              <TouchableOpacity onPress={() => setShowLegalModal(true)} activeOpacity={0.7}>
+                <Text style={styles.footerLink}>Terms of Use (EULA)</Text>
+              </TouchableOpacity>
+              <Text style={styles.footerDot}>•</Text>
+              <TouchableOpacity onPress={() => setShowLegalModal(true)} activeOpacity={0.7}>
+                <Text style={styles.footerLink}>Privacy Policy</Text>
               </TouchableOpacity>
             </View>
             
             <Text style={styles.disclaimerText}>
-              Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period. Manage subscriptions in App Store Settings.
+              Payment will be charged to your Apple ID or Google Play account at confirmation of purchase. Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period. Manage subscriptions in your Account Settings after purchase.
             </Text>
           </ScrollView>
         </View>
       </View>
+
+      <TermsOfServiceModal 
+        visible={showLegalModal} 
+        onClose={() => setShowLegalModal(false)} 
+      />
     </Modal>
   );
 }

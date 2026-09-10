@@ -169,6 +169,19 @@ export const processVideo = onCall(
       );
     }
 
+    // Server-side Quota Enforcement: Prevent API drain by locking un-upgraded users to 5 books
+    const userDocSnap = await db.collection("users").doc(userId).get();
+    const isPro = Boolean(userDocSnap.data()?.isPro);
+    if (!isPro) {
+      const booksSnap = await db.collection("users").doc(userId).collection("books").get();
+      if (booksSnap.size > 5) {
+        throw new HttpsError(
+          "resource-exhausted",
+          "Free tier bookshelf quota of 5 audiobooks reached. Please upgrade to PaperEcho Pro or delete an existing audiobook."
+        );
+      }
+    }
+
     const ai = new GoogleGenAI({ apiKey: geminiApiKey.value() });
 
     let totalOcrInputTokens = 0;
