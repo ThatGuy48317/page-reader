@@ -20,5 +20,20 @@
   },
   "storage": {
     "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      { "source": "/privacy", "destination": "/privacy.html" },
+      { "source": "/terms", "destination": "/terms.html" },
+      { "source": "/dmca", "destination": "/dmca.html" },
+      { "source": "/delete-account", "destination": "/delete-account.html" },
+      { "source": "/support", "destination": "/support.html" }
+    ]
   }
 }

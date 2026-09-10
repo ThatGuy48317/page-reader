@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - PaperEcho</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-light: #334155;
+      --primary: #3b82f6;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    header { margin-bottom: 2rem; border-bottom: 1px solid var(--surface-light); padding-bottom: 1rem; }
+    h1 { font-size: 2.2rem; font-weight: 800; margin-bottom: 0.5rem; }
+    .date { color: var(--text-muted); font-size: 0.9rem; }
+    h2 { font-size: 1.4rem; margin: 1.75rem 0 0.75rem; color: #fff; }
+    p, li { color: #cbd5e1; font-size: 1rem; margin-bottom: 0.75rem; }
+    ul { margin-left: 1.5rem; margin-bottom: 1rem; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .highlight-box {
+      background: var(--surface);
+      border-left: 4px solid var(--primary);
+      padding: 1rem 1.25rem;
+      border-radius: 0 0.5rem 0.5rem 0;
+      margin: 1.5rem 0;
+    }
+    footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--surface-light); text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <p><a href="/">← Back to PaperEcho</a></p>
+      <h1 style="margin-top: 1rem;">Privacy Policy</h1>
+      <p class="date">Effective Date: September 10, 2026 • Version 1.1</p>
+    </header>
+
+    <div class="highlight-box">
+      <strong>Our Core Commitment:</strong> PaperEcho does not sell, rent, or monetize your personal data or your book scans. We operate strictly as an assistive personal tool to help you listen to physical books you lawfully possess.
+    </div>
+
+    <h2>1. Information We Collect</h2>
+    <p>We collect only the minimal data necessary to provide and secure the service:</p>
+    <ul>
+      <li><strong>Account Credentials:</strong> Email address and verified authentication identifier via Google Sign-In or Firebase Authentication.</li>
+      <li><strong>Intermediate Page Recordings:</strong> Video captures of physical pages recorded through the mobile app, uploaded solely to process OCR text extraction.</li>
+      <li><strong>Synthesized Audio & Transcriptions:</strong> Generated audiobook narration files (RIFF WAV) and extracted chapter text.</li>
+      <li><strong>Subscription Entitlement Status:</strong> Anonymous transaction IDs and receipt identifiers managed securely through Apple App Store, Google Play Billing, and RevenueCat.</li>
+    </ul>
+
+    <h2>2. Ephemeral Storage & Retention Invariants</h2>
+    <p>To respect your privacy and adhere strictly to copyright safe harbor principles:</p>
+    <ul>
+      <li><strong>Immediate Raw Video Purge:</strong> Uploaded video files of physical pages are permanently deleted from cloud storage immediately upon successful audio synthesis.</li>
+      <li><strong>7-Day Ephemeral Audio Expiration:</strong> Synthesized audiobook files are automatically purged from our cloud servers 7 days after generation.</li>
+      <li><strong>Spoken Watermark:</strong> Synthesized audio includes an introductory spoken watermark associating the file with your account to discourage unauthorized redistribution.</li>
+    </ul>
+
+    <h2>3. Subprocessors & Cloud Infrastructure</h2>
+    <p>We partner only with industry-leading enterprise cloud providers to safeguard your data:</p>
+    <ul>
+      <li><strong>Google Cloud Platform & Firebase:</strong> Authentication, Firestore database storage, and secure cloud storage.</li>
+      <li><strong>Google Gemini AI:</strong> Multimodal optical character recognition and neural text-to-speech audio synthesis. User data processed through enterprise API tiers is not used to train foundation models.</li>
+      <li><strong>RevenueCat:</strong> Cross-platform subscription lifecycle synchronization.</li>
+    </ul>
+
+    <h2>4. Your Rights: In-App & Web Account Deletion (Apple Guideline 5.1.1(v))</h2>
+    <p>You have full ownership of your data. You may permanently delete your account and all associated data at any time:</p>
+    <ul>
+      <li><strong>In-App:</strong> Navigate to Settings → <em>"Delete Account & Erase All Data"</em> to instantly and permanently wipe your account, Firestore documents, and all stored recordings.</li>
+      <li><strong>Online Web Request:</strong> If you have uninstalled the app or lost device access, visit our <a href="/delete-account">Account Deletion Request Page</a> to submit a deletion request.</li>
+    </ul>
+
+    <h2>5. Contact Us</h2>
+    <p>If you have any questions regarding this Privacy Policy or your data, contact our Privacy Officer at <a href="mailto:privacy@paperecho.ai">privacy@paperecho.ai</a>.</p>
+
+    <footer>
+      <p>© 2026 PaperEcho LLC. All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>

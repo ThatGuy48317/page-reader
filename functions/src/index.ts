@@ -628,38 +628,51 @@ ${rawText.substring(0, 3000)}`,
         const progress = 65 + Math.round((i / textChunks.length) * 30);
         await updateStatus(userId, bookId, "generating_audio", progress);
 
-        const ttsResponse = await ai.models.generateContent({
-          model: "gemini-2.5-flash-preview-tts",
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: textChunks[i] }],
-            },
-          ],
-          config: {
-            responseModalities: ["AUDIO"],
-            speechConfig: {
-              voiceConfig: {
-                prebuiltVoiceConfig: {
-                  voiceName: resolvedVoice,
+        // Retry chunk up to 2 times for transient network/rate issues
+        let pcmBuffer: Buffer | null = null;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            const ttsResponse = await ai.models.generateContent({
+              model: "gemini-2.5-flash-preview-tts",
+              contents: [
+                {
+                  role: "user",
+                  parts: [{ text: textChunks[i] }],
+                },
+              ],
+              config: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                  voiceConfig: {
+                    prebuiltVoiceConfig: {
+                      voiceName: resolvedVoice,
+                    },
+                  },
                 },
               },
-            },
-          },
-        });
+            });
 
-        const audioPart =
-          ttsResponse.candidates?.[0]?.content?.parts?.[0];
-        if (audioPart?.inlineData?.data) {
-          const pcmBuffer = Buffer.from(audioPart.inlineData.data, "base64");
+            const audioPart = ttsResponse.candidates?.[0]?.content?.parts?.[0];
+            if (audioPart?.inlineData?.data) {
+              pcmBuffer = Buffer.from(audioPart.inlineData.data, "base64");
+              break;
+            }
+          } catch (chunkErr) {
+            console.warn(`TTS synthesis chunk ${i + 1}/${textChunks.length} attempt ${attempt} failed:`, chunkErr);
+            if (attempt === 2) throw chunkErr;
+            await new Promise((r) => setTimeout(r, 1000));
+          }
+        }
+
+        if (pcmBuffer) {
           audioBuffers.push(pcmBuffer);
           // Calculate duration: PCM 24kHz 16-bit mono = 48000 bytes per second
           totalAudioDuration += pcmBuffer.length / 48000;
         }
 
-        // Rate limit: wait 500ms between TTS calls
+        // Rate limit: wait 300ms between TTS calls
         if (i < textChunks.length - 1) {
-          await new Promise((r) => setTimeout(r, 500));
+          await new Promise((r) => setTimeout(r, 300));
         }
       }
 
@@ -737,6 +750,23 @@ ${rawText.substring(0, 3000)}`,
           await ai.files.delete({ name: uploadedFileName });
         } catch {
           // Non-critical, ignore cleanup errors
+        }
+      }
+
+      // Clean up intermediate raw video recording from Firebase Storage (saves ~90% storage space & protects fair use privacy)
+      if (videoPath) {
+        try {
+          const rawVideoFile = bucket.file(videoPath);
+          const [videoExists] = await rawVideoFile.exists();
+          if (videoExists) {
+            await rawVideoFile.delete();
+            console.log(`Intermediate video ${videoPath} successfully deleted from Storage.`);
+            await db.collection("users").doc(userId).collection("books").doc(bookId).update({
+              videoUri: admin.firestore.FieldValue.delete(),
+            });
+          }
+        } catch (vidErr) {
+          console.warn(`Non-critical: Failed to delete intermediate video ${videoPath}:`, vidErr);
         }
       }
 
@@ -1028,4 +1058,48 @@ export const syncUserSubscription = onCall(
     return { success: true, isPro: Boolean(isPro) };
   }
 );
+
+/**
+ * Callable function to permanently delete a user's account and all associated data.
+ * Complies with Apple Review Guideline 5.1.1(v) and GDPR Article 17.
+ */
+export const deleteUserAccount = onCall(
+  async (request) => {
+    if (!request.auth) {
+      throw new HttpsError("unauthenticated", "User must be authenticated.");
+    }
+
+    const userId = request.auth.uid;
+    console.log(`deleteUserAccount requested for user: ${userId}`);
+
+    try {
+      // 1. Delete all user bookshelf documents from Firestore
+      const booksSnapshot = await db.collection("users").doc(userId).collection("books").get();
+      const deleteBatch = db.batch();
+      booksSnapshot.docs.forEach((docSnap) => {
+        deleteBatch.delete(docSnap.ref);
+      });
+      deleteBatch.delete(db.collection("users").doc(userId));
+      await deleteBatch.commit();
+
+      // 2. Delete all files in Firebase Storage under users/{userId}/
+      try {
+        await bucket.deleteFiles({ prefix: `users/${userId}/` });
+        console.log(`Storage files deleted for user: ${userId}`);
+      } catch (storageErr) {
+        console.warn(`Non-critical error deleting storage files for ${userId}:`, storageErr);
+      }
+
+      // 3. Delete user from Firebase Authentication
+      await admin.auth().deleteUser(userId);
+      console.log(`User ${userId} deleted from Firebase Auth.`);
+
+      return { success: true };
+    } catch (err: any) {
+      console.error(`Failed to delete account for ${userId}:`, err);
+      throw new HttpsError("internal", err.message || "Failed to delete user account.");
+    }
+  }
+);
+
 

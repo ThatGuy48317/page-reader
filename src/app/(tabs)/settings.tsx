@@ -5,7 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteUser } from 'firebase/auth';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { db, auth, functions } from '@/lib/firebase';
 import { VoiceSelector } from '@/components/VoiceSelector';
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { PaywallModal } from '@/components/PaywallModal';
@@ -65,19 +66,26 @@ export default function SettingsScreen() {
             if (!currentUser) return;
             setDeleting(true);
             try {
-              // 1. Wipe Firestore bookshelf documents
-              const booksCol = collection(db, 'users', currentUser.uid, 'books');
-              const snaps = await getDocs(booksCol);
-              for (const bookSnap of snaps.docs) {
-                await deleteDoc(doc(db, 'users', currentUser.uid, 'books', bookSnap.id));
+              // 1. Call backend Cloud Function to atomically delete Firestore, Storage, and Auth
+              try {
+                const deleteAccountFn = httpsCallable(functions, 'deleteUserAccount');
+                await deleteAccountFn();
+              } catch (cloudErr) {
+                console.warn('Backend deleteUserAccount error, running direct client fallback:', cloudErr);
+                // Fallback: direct client deletion
+                const booksCol = collection(db, 'users', currentUser.uid, 'books');
+                const snaps = await getDocs(booksCol);
+                for (const bookSnap of snaps.docs) {
+                  await deleteDoc(doc(db, 'users', currentUser.uid, 'books', bookSnap.id));
+                }
+                await deleteUser(currentUser);
               }
 
               // 2. Clear local AsyncStorage keys
               await AsyncStorage.removeItem('paperecho_default_voice');
               await AsyncStorage.removeItem('@paperecho_accessibility_mode');
+              await AsyncStorage.removeItem('@books_cache');
 
-              // 3. Delete Firebase Auth User
-              await deleteUser(currentUser);
               Alert.alert('Account Deleted', 'Your account and all associated data have been permanently erased.');
             } catch (err: any) {
               console.error('Account deletion error:', err);

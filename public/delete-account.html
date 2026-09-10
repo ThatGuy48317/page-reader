@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account & Data Deletion - PaperEcho</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-light: #334155;
+      --primary: #3b82f6;
+      --error: #ef4444;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 2rem 1.5rem 4rem;
+    }
+    .container { max-width: 600px; margin: 0 auto; }
+    header { margin-bottom: 2rem; border-bottom: 1px solid var(--surface-light); padding-bottom: 1rem; }
+    h1 { font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; }
+    p { color: #cbd5e1; font-size: 1rem; margin-bottom: 1rem; }
+    a { color: var(--primary); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--surface-light);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .warning {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.9rem;
+      margin-bottom: 1.25rem;
+    }
+    label { display: block; font-size: 0.9rem; font-weight: 600; color: #fff; margin-bottom: 0.5rem; }
+    input[type="email"], textarea {
+      width: 100%;
+      padding: 0.75rem;
+      background: #0f172a;
+      border: 1px solid var(--surface-light);
+      border-radius: 0.5rem;
+      color: #fff;
+      font-size: 1rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background: var(--error);
+      color: #fff;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      width: 100%;
+    }
+    button:hover { opacity: 0.9; }
+    footer { margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--surface-light); text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <p><a href="/">← Back to PaperEcho</a></p>
+      <h1 style="margin-top: 1rem;">Delete Account & Associated Data</h1>
+      <p style="color: var(--text-muted);">Apple App Store Guideline 5.1.1(v) & GDPR Right to Erasure</p>
+    </header>
+
+    <div class="card">
+      <div class="warning">
+        ⚠️ <strong>Warning:</strong> Deleting your account is permanent. All your active audiobooks, transcripts, bookshelf records, and stored audio will be immediately and irreversibly erased.
+      </div>
+
+      <h2 style="font-size: 1.2rem; color: #fff; margin-bottom: 0.75rem;">Option 1: In-App Instant Deletion (Recommended)</h2>
+      <p>If you have the PaperEcho mobile app installed on your iPhone or Android device:</p>
+      <ol style="margin-left: 1.5rem; margin-bottom: 1.5rem; color: #cbd5e1;">
+        <li>Open the <strong>PaperEcho</strong> app.</li>
+        <li>Tap the <strong>Settings</strong> tab.</li>
+        <li>Scroll down to the <em>Danger Zone</em>.</li>
+        <li>Tap <strong>"Delete Account & Erase All Data"</strong> and confirm.</li>
+      </ol>
+
+      <h2 style="font-size: 1.2rem; color: #fff; margin-bottom: 0.75rem;">Option 2: Web Deletion Request</h2>
+      <p>If you have uninstalled the app or lost your device, submit your registered account email below. Our compliance team will process complete data erasure within 24 hours.</p>
+
+      <form action="mailto:support@paperecho.ai?subject=Account%20Deletion%20Request" method="POST" enctype="text/plain">
+        <label for="email">Your Account Email Address:</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required>
+
+        <label for="notes">Additional Information (Optional):</label>
+        <textarea id="notes" name="notes" rows="3" placeholder="State reason or confirm you wish to delete all associated bookshelf data"></textarea>
+
+        <button type="submit">Submit Account Deletion Request</button>
+      </form>
+    </div>
+
+    <footer>
+      <p>© 2026 PaperEcho LLC. All rights reserved.</p>
+    </footer>
+  </div>
+</body>
+</html>
