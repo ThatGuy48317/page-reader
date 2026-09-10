@@ -47,9 +47,17 @@ export function BookCard({ book, onPress }: BookCardProps) {
     return `${minutes}m ${seconds}s`;
   };
 
-  const formatDate = (date: Date | string | number | undefined) => {
+  const formatDate = (date: any) => {
     if (!date) return '';
-    const d = new Date(date);
+    let d: Date;
+    if (typeof date?.toDate === 'function') {
+      d = date.toDate();
+    } else if (typeof date?.seconds === 'number') {
+      d = new Date(date.seconds * 1000);
+    } else {
+      d = new Date(date);
+    }
+    if (isNaN(d.getTime())) return 'Just now';
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
   };
 
