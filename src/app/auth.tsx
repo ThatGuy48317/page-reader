@@ -27,20 +27,18 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
-  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
-  const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1099382222092-placeholder.apps.googleusercontent.com';
+  const rawWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+  const rawAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  const rawIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
-  const redirectUri = makeRedirectUri({
-    scheme: 'paperecho',
-  });
+  const webClientId = rawWebClientId && !rawWebClientId.includes('placeholder') ? rawWebClientId : undefined;
+  const androidClientId = rawAndroidClientId && rawAndroidClientId !== rawWebClientId && !rawAndroidClientId.includes('placeholder') ? rawAndroidClientId : undefined;
+  const iosClientId = rawIosClientId && rawIosClientId !== rawWebClientId && !rawIosClientId.includes('placeholder') ? rawIosClientId : undefined;
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    clientId: webClientId,
     webClientId,
     androidClientId,
     iosClientId,
-    redirectUri,
   });
 
   useEffect(() => {
