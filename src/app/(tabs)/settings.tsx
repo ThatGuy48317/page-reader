@@ -46,6 +46,7 @@ export default function SettingsScreen() {
 
   const handleSignOut = async () => {
     try {
+      await AsyncStorage.removeItem('@books_cache');
       await auth.signOut();
     } catch (e) {
       console.error('Sign out error', e);

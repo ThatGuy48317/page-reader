@@ -32,11 +32,17 @@ export default function AuthScreen() {
   const rawAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
   const rawIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
 
-  const webClientId = rawWebClientId && !rawWebClientId.includes('placeholder') ? rawWebClientId : undefined;
-  const androidClientId = rawAndroidClientId && rawAndroidClientId !== rawWebClientId && !rawAndroidClientId.includes('placeholder') ? rawAndroidClientId : undefined;
-  const iosClientId = rawIosClientId && rawIosClientId !== rawWebClientId && !rawIosClientId.includes('placeholder') ? rawIosClientId : undefined;
+  // Fallback client ID ensures invariantClientId never throws on any platform
+  const fallbackClientId = rawWebClientId && !rawWebClientId.includes('placeholder')
+    ? rawWebClientId 
+    : '1099382222092-d8ejjsc1vis7vfdfoaqtiu29tmq67k9j.apps.googleusercontent.com';
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
+  const webClientId = rawWebClientId && !rawWebClientId.includes('placeholder') ? rawWebClientId : fallbackClientId;
+  const androidClientId = rawAndroidClientId && !rawAndroidClientId.includes('placeholder') ? rawAndroidClientId : fallbackClientId;
+  const iosClientId = rawIosClientId && !rawIosClientId.includes('placeholder') ? rawIosClientId : fallbackClientId;
+
+  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
+    clientId: fallbackClientId,
     webClientId,
     androidClientId,
     iosClientId,
@@ -66,7 +72,7 @@ export default function AuthScreen() {
       const errMsg = (response.error as any)?.message || (response.error as any)?.description || 'Google sign-in failed.';
       setError(errMsg);
       setLoading(false);
-    } else if (response?.type === 'dismiss') {
+    } else if (response?.type === 'dismiss' || response?.type === 'cancel') {
       setLoading(false);
     }
   }, [response]);
