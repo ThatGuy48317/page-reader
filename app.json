@@ -23,6 +23,7 @@
         "foregroundImage": "./assets/images/icon.png"
       },
       "package": "com.paperecho.app",
+      "googleServicesFile": "./google-services.json",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",

@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1099382222092",
+    "project_id": "page-reader-prod",
+    "storage_bucket": "page-reader-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1099382222092:android:aea7e34faa1a6446d4ad29",
+        "android_client_info": {
+          "package_name": "com.paperecho.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1099382222092-rpr5rjbsmh8orkh25pv2rdq3pq1huee1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.paperecho.app",
+            "certificate_hash": "d4f285ba992b59c67b42064649f9b785e5ab7d9e"
+          }
+        },
+        {
+          "client_id": "1099382222092-d8ejjsc1vis7vfdfoaqtiu29tmq67k9j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDnSq9i_HQa4yCcu6kFfvc0pyOjOpfu3c0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1099382222092-d8ejjsc1vis7vfdfoaqtiu29tmq67k9j.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
