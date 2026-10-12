@@ -9,15 +9,11 @@ import {
   signInWithPopup, 
   signInWithCredential 
 } from 'firebase/auth';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import { makeRedirectUri } from 'expo-auth-session';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '@expo/vector-icons';
 import { auth } from '@/lib/firebase';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { GoogleLogo } from '@/components/GoogleLogo';
-
-WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -28,54 +24,15 @@ export default function AuthScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const rawWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
-  const rawAndroidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
-  const rawIosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
-
-  // Fallback client ID ensures invariantClientId never throws on any platform
-  const fallbackClientId = rawWebClientId && !rawWebClientId.includes('placeholder')
-    ? rawWebClientId 
-    : '1099382222092-d8ejjsc1vis7vfdfoaqtiu29tmq67k9j.apps.googleusercontent.com';
-
-  const webClientId = rawWebClientId && !rawWebClientId.includes('placeholder') ? rawWebClientId : fallbackClientId;
-  const androidClientId = rawAndroidClientId && !rawAndroidClientId.includes('placeholder') ? rawAndroidClientId : fallbackClientId;
-  const iosClientId = rawIosClientId && !rawIosClientId.includes('placeholder') ? rawIosClientId : fallbackClientId;
-
-  const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
-    clientId: fallbackClientId,
-    webClientId,
-    androidClientId,
-    iosClientId,
-  });
-
   useEffect(() => {
-    if (response?.type === 'success') {
-      const idToken = response.params?.id_token || response.authentication?.idToken;
-      if (idToken) {
-        setLoading(true);
-        const credential = GoogleAuthProvider.credential(idToken);
-        signInWithCredential(auth, credential)
-          .catch((err) => {
-            console.error('Google Firebase Sign-In error:', err);
-            setError(err.message || 'Google authentication failed.');
-          })
-          .finally(() => {
-            setLoading(false);
-          });
-      } else {
-        console.warn('Google Auth response missing id_token:', response);
-        setError('Google authentication succeeded but no ID token was returned.');
-        setLoading(false);
-      }
-    } else if (response?.type === 'error') {
-      console.error('Google Auth error:', response.error);
-      const errMsg = (response.error as any)?.message || (response.error as any)?.description || 'Google sign-in failed.';
-      setError(errMsg);
-      setLoading(false);
-    } else if (response?.type === 'dismiss' || response?.type === 'cancel') {
-      setLoading(false);
+    if (Platform.OS !== 'web') {
+      const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || '1099382222092-d8ejjsc1vis7vfdfoaqtiu29tmq67k9j.apps.googleusercontent.com';
+      GoogleSignin.configure({
+        webClientId,
+        offlineAccess: false,
+      });
     }
-  }, [response]);
+  }, []);
 
   const handleGoogleSignIn = async () => {
     setError('');
@@ -90,19 +47,27 @@ export default function AuthScreen() {
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
       } else {
-        if (promptAsync) {
-          const res = await promptAsync();
-          if (res?.type === 'dismiss' || res?.type === 'cancel') {
-            setLoading(false);
-          }
-        } else {
-          setError('Google Sign-In is initializing...');
-          setLoading(false);
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        const response = await GoogleSignin.signIn();
+        const idToken = response.data?.idToken || (response as any).idToken;
+        if (!idToken) {
+          throw new Error('Google Sign-In completed but no ID token was returned.');
         }
+        const credential = GoogleAuthProvider.credential(idToken);
+        await signInWithCredential(auth, credential);
       }
     } catch (err: any) {
-      console.error('Google sign-in exception:', err);
-      setError(err.message || 'Google sign-in failed');
+      if (err.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled, do not display error
+      } else if (err.code === statusCodes.IN_PROGRESS) {
+        // Sign-in already in progress
+      } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        setError('Google Play Services is not available or needs updating.');
+      } else {
+        console.error('Google sign-in exception:', err);
+        setError(err.message || 'Google sign-in failed');
+      }
+    } finally {
       setLoading(false);
     }
   };
@@ -176,9 +141,9 @@ export default function AuthScreen() {
 
           {/* Google Sign-In */}
           <TouchableOpacity 
-            style={[styles.googleButton, (!request || loading) && styles.googleButtonDisabled]} 
+            style={[styles.googleButton, loading && styles.googleButtonDisabled]} 
             onPress={handleGoogleSignIn}
-            disabled={!request || loading}
+            disabled={loading}
             activeOpacity={0.85}
           >
             <View style={styles.googleIconContainer}>

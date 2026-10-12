@@ -65,7 +65,8 @@
       "expo-web-browser",
       "expo-status-bar",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,

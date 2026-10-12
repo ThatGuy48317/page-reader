@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { Ionicons } from '@expo/vector-icons';
 import { deleteUser } from 'firebase/auth';
 import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
@@ -46,6 +47,11 @@ export default function SettingsScreen() {
 
   const handleSignOut = async () => {
     try {
+      if (Platform.OS !== 'web') {
+        try {
+          await GoogleSignin.signOut();
+        } catch {}
+      }
       await AsyncStorage.removeItem('@books_cache');
       await auth.signOut();
     } catch (e) {
