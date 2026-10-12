@@ -37,4 +37,4 @@ export const TIERS: Record<string, UserTier> = {
   },
 };
 
-export const DEFAULT_USER_TIER = TIERS.free;
+export const DEFAULT_USER_TIER = TIERS.pro;

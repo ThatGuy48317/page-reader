@@ -3,8 +3,8 @@ import { View, Text, StyleSheet, Modal, TouchableOpacity, ScrollView, ActivityIn
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { TIERS } from '@/constants/monetization';
-import { fetchOfferings, purchaseSubscriptionPackage, restoreUserPurchases } from '@/lib/purchases';
-import { PurchasesPackage } from 'react-native-purchases';
+import { fetchOfferings, purchaseSubscriptionPackage, restoreUserPurchases, PurchasesPackage } from '@/lib/purchases';
+
 import { TermsOfServiceModal } from '@/components/TermsOfServiceModal';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '@/lib/firebase';
