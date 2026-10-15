@@ -6,6 +6,9 @@ import { defineSecret } from "firebase-functions/params";
 import * as fs from "fs";
 import * as path from "path";
 import * as os from "os";
+import { execSync } from "child_process";
+import vision from "@google-cloud/vision";
+import ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 
 admin.initializeApp();
 
@@ -176,6 +179,168 @@ async function updateStatus(
 }
 
 /**
+ * Queries Google Books API and Open Library API to fetch high-quality public cover art.
+ * Costs $0 and uses 0 AI tokens.
+ */
+async function fetchBookCoverUrl(title: string, author?: string): Promise<string | undefined> {
+  if (!title || title === "Untitled Audiobook") return undefined;
+
+  // 1. Primary Lookup: Google Books API (free public metadata endpoint)
+  try {
+    const qParams =
+      author && author !== "Unknown Author"
+        ? `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`
+        : encodeURIComponent(title);
+    const url = `https://www.googleapis.com/books/v1/volumes?q=${qParams}&maxResults=1`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const imageLinks = data.items?.[0]?.volumeInfo?.imageLinks;
+      const img = imageLinks?.thumbnail || imageLinks?.smallThumbnail || imageLinks?.medium || imageLinks?.large;
+      if (img) {
+        return img.replace(/^http:\/\//i, "https://");
+      }
+    }
+  } catch (e) {
+    console.warn("Google Books cover lookup failed:", e);
+  }
+
+  // 2. Secondary Fallback: Open Library Covers API
+  try {
+    const olUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=1`;
+    const res = await fetch(olUrl);
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      const coverId = data.docs?.[0]?.cover_i;
+      if (coverId) {
+        return `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
+      }
+    }
+  } catch (e) {
+    console.warn("Open Library cover lookup failed:", e);
+  }
+
+  return undefined;
+}
+
+/**
+ * Extracts settled video frames and performs Cloud Vision document OCR.
+ * Cloud Vision is a pure OCR engine with 0 recitation blocks, allowing
+ * personal reading/narration of physical books without false-positive AI copyright triggers.
+ */
+async function extractTextViaCloudVision(
+  videoFilePath: string,
+  bookId: string,
+  ai: GoogleGenAI,
+  addUsage: (usage: any) => void
+): Promise<string> {
+  const tempFramesDir = path.join(os.tmpdir(), `frames_${bookId}_${Date.now()}`);
+  if (!fs.existsSync(tempFramesDir)) {
+    fs.mkdirSync(tempFramesDir, { recursive: true });
+  }
+
+  try {
+    const ffmpegPath = ffmpegInstaller.path;
+    console.log(`Extracting video frames using ffmpeg at: ${ffmpegPath}`);
+    // Extract 1 frame every 4 seconds at 720p
+    execSync(`"${ffmpegPath}" -i "${videoFilePath}" -vf "fps=1/4" -q:v 3 "${tempFramesDir}/frame_%03d.jpg" -y`, {
+      stdio: "pipe",
+    });
+
+    const frameFiles = fs
+      .readdirSync(tempFramesDir)
+      .filter((f) => f.endsWith(".jpg"))
+      .sort();
+
+    console.log(`Extracted ${frameFiles.length} video frames for book ${bookId}`);
+    if (frameFiles.length === 0) {
+      return "";
+    }
+
+    const visionClient = new vision.ImageAnnotatorClient();
+    const rawFrameTexts: string[] = [];
+    const BATCH_SIZE = 14;
+
+    for (let i = 0; i < frameFiles.length; i += BATCH_SIZE) {
+      const chunk = frameFiles.slice(i, i + BATCH_SIZE);
+      const requests = chunk.map((file) => ({
+        image: {
+          content: fs.readFileSync(path.join(tempFramesDir, file)).toString("base64"),
+        },
+        features: [{ type: "DOCUMENT_TEXT_DETECTION" as const }],
+      }));
+
+      const [batchResult] = await visionClient.batchAnnotateImages({ requests });
+      if (batchResult.responses) {
+        batchResult.responses.forEach((resp) => {
+          const fullText = resp.fullTextAnnotation?.text;
+          if (fullText && fullText.trim().length > 30) {
+            rawFrameTexts.push(fullText.trim());
+          }
+        });
+      }
+    }
+
+    console.log(`Cloud Vision OCR returned ${rawFrameTexts.length} non-empty text frames.`);
+    if (rawFrameTexts.length === 0) {
+      return "";
+    }
+
+    // Pass the sequential frames to Gemini 3.8 Flash to deduplicate, re-order columns, and mark chapters
+    console.log("Passing raw OCR frames to Gemini 3.8 Flash for publication deduplication...");
+    const combinedRawOcr = rawFrameTexts
+      .map((txt, idx) => `--- FRAME ${idx + 1} ---\n${txt}`)
+      .join("\n\n");
+
+    const dedupeResponse = await ai.models.generateContent({
+      model: "gemini-3.8-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `You are an expert publication editor and OCR deduplication system.
+Below are sequential OCR text captures taken every 4 seconds from a video of someone turning pages of a book, magazine, or periodical.
+Because the camera captures the same page across multiple consecutive frames, there is heavy overlap and duplicate text between adjacent frames.
+
+Your tasks:
+1. Reconstruct the complete, seamless reading prose of the book/chapter in exact chronological reading order.
+2. Deduplicate all repeated paragraphs, sentences, and overlapping frame captures.
+3. For multi-column pages, ensure columns are read completely from top to bottom before moving to the next column.
+4. Connect split sentences across page boundaries into continuous text.
+5. Remove running headers, book titles at top of pages, and standalone page numbers.
+6. Format chapter or major section titles as [CHAPTER: Title].
+7. Separate distinct paragraphs with double newlines.
+8. Return ONLY the clean, narrative prose ready for audiobook text-to-speech. Do NOT include markdown code blocks, preamble, or commentary.
+
+Sequential OCR captures:
+${combinedRawOcr.substring(0, 100000)}`,
+            },
+          ],
+        },
+      ],
+    });
+
+    addUsage((dedupeResponse as any).usageMetadata);
+    const finishReason = dedupeResponse.candidates?.[0]?.finishReason;
+    console.log(`Gemini deduplication finishReason: ${finishReason}`);
+
+    return dedupeResponse.text || "";
+  } catch (err) {
+    console.warn("Cloud Vision OCR pipeline error:", err);
+    return "";
+  } finally {
+    try {
+      if (fs.existsSync(tempFramesDir)) {
+        fs.rmSync(tempFramesDir, { recursive: true, force: true });
+      }
+    } catch (cleanupErr) {
+      console.warn("Failed to clean up temp frames dir:", cleanupErr);
+    }
+  }
+}
+
+/**
  * Main processing function — called by the mobile app after video upload.
  *
  * Input: { bookId: string, videoPath: string, voiceName: string }
@@ -186,7 +351,7 @@ async function updateStatus(
 export const processVideo = onCall(
   {
     timeoutSeconds: 540,
-    memory: "1GiB",
+    memory: "2GiB",
     secrets: [geminiApiKey],
   },
   async (request) => {
@@ -265,25 +430,83 @@ export const processVideo = onCall(
 
         await file.download({ destination: tempFilePath });
 
-        // ── Step 3: Upload video to Gemini Files API ──
-        await updateStatus(userId, bookId, "extracting", 20);
-
-        const uploadedFile = await ai.files.upload({
-          file: tempFilePath,
-          config: { mimeType: videoMime },
-        });
-        uploadedFileName = uploadedFile.name;
-
-        // Poll until file is active
-        let fileState = await ai.files.get({ name: uploadedFile.name! });
-        let pollCount = 0;
-        while (fileState.state === "PROCESSING" && pollCount < 60) {
-          await new Promise((r) => setTimeout(r, 3000));
-          fileState = await ai.files.get({ name: uploadedFile.name! });
-          pollCount++;
+        // ── Step 3: Extract text via Cloud Vision OCR (primary, 0 recitation blocks) ──
+        await updateStatus(userId, bookId, "extracting", 25);
+        try {
+          rawText = await extractTextViaCloudVision(tempFilePath, bookId, ai, addUsage);
+          console.log(`Cloud Vision OCR result length: ${rawText ? rawText.length : 0}`);
+        } catch (visionErr) {
+          console.warn("Cloud Vision OCR encountered an issue, will try Gemini Video API fallback:", visionErr);
         }
 
-        // Cleanup local temp file once uploaded to Gemini
+        // ── Step 4: Fallback to Gemini Video Understanding if Cloud Vision returned < 50 chars ──
+        if (!rawText || rawText.trim().length < 50) {
+          console.log("Cloud Vision did not return sufficient text; falling back to Gemini Video Understanding API...");
+          await updateStatus(userId, bookId, "extracting", 35);
+
+          const uploadedFile = await ai.files.upload({
+            file: tempFilePath,
+            config: { mimeType: videoMime },
+          });
+          uploadedFileName = uploadedFile.name;
+
+          let fileState = await ai.files.get({ name: uploadedFile.name! });
+          let pollCount = 0;
+          while (fileState.state === "PROCESSING" && pollCount < 60) {
+            await new Promise((r) => setTimeout(r, 3000));
+            fileState = await ai.files.get({ name: uploadedFile.name! });
+            pollCount++;
+          }
+
+          if (fileState.state === "ACTIVE") {
+            const extractionResponse = await ai.models.generateContent({
+              model: "gemini-3.8-flash",
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    {
+                      fileData: {
+                        fileUri: fileState.uri!,
+                        mimeType: fileState.mimeType || videoMime,
+                      },
+                    },
+                    {
+                      text: `Transcribe all readable book prose from this video into structured JSON.
+Return a JSON object with a "pages" array where each item has "pageNumber" and "text".
+Mark chapter or section headings as [CHAPTER: Title].
+Omit advertisements, commercial coupons, or publisher mastheads.`,
+                    },
+                  ],
+                },
+              ],
+              config: {
+                responseMimeType: "application/json",
+              },
+            });
+
+            addUsage((extractionResponse as any).usageMetadata);
+            const finishReason = extractionResponse.candidates?.[0]?.finishReason;
+            console.log(`Gemini video extraction finishReason: ${finishReason}`);
+
+            const rawJson = extractionResponse.text || "";
+            if (rawJson) {
+              try {
+                const parsed = JSON.parse(rawJson);
+                if (parsed && Array.isArray(parsed.pages)) {
+                  rawText = parsed.pages
+                    .map((p: any) => (typeof p.text === "string" ? p.text.trim() : ""))
+                    .filter((t: string) => t.length > 0)
+                    .join("\n\n");
+                }
+              } catch (parseErr) {
+                console.warn("Failed to parse Gemini video JSON:", parseErr);
+              }
+            }
+          }
+        }
+
+        // Cleanup local temp file once OCR is done
         try {
           if (fs.existsSync(tempFilePath)) {
             fs.unlinkSync(tempFilePath);
@@ -291,71 +514,11 @@ export const processVideo = onCall(
         } catch (cleanupErr) {
           console.warn("Failed to delete temp video file:", cleanupErr);
         }
-
-        if (fileState.state !== "ACTIVE") {
-          throw new Error(`File processing failed. State: ${fileState.state}`);
-        }
-
-        // ── Step 4: Extract text via Gemini Video Understanding ──
-        await updateStatus(userId, bookId, "extracting", 40);
-
-        const extractionResponse = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
-          contents: [
-            {
-              role: "user",
-              parts: [
-                {
-                  fileData: {
-                    fileUri: fileState.uri!,
-                    mimeType: fileState.mimeType || videoMime,
-                  },
-                },
-                {
-                  text: `You are an expert OCR and publication transcription system. Extract ALL primary article and book prose from every page shown in this video.
-This video captures someone slowly turning through the physical pages of a book, magazine, newspaper, or periodical.
-
-Key Instructions:
-1. MULTI-COLUMN & LAYOUT FLOW (CRITICAL FOR MAGAZINES & NEWSPAPERS):
-   - Magazines and newspapers frequently use 2, 3, or 4 vertical columns per page.
-   - You MUST read and transcribe each vertical column COMPLETELY from top to bottom before moving to the next column to the right (Column 1 top-to-bottom, then Column 2 top-to-bottom, etc.).
-   - NEVER read horizontally across columns, as this scrambles sentences together and makes text nonsensical.
-   - For articles that span across page turns, connect the text from the bottom of the last column of page 1 directly to the top of the first column of page 2.
-
-2. ADVERTISEMENTS & NON-CONTENT EXCLUSIONS (STRICT):
-   - COMPLETELY IGNORE and DO NOT TRANSCRIBE commercial advertisements (half-page, full-page, or banner ads).
-   - Exclude promotional slogans, coupon codes, sponsor notices, brand logos, product purchasing details, and marketing blurbs.
-   - Exclude enlarged "pull-quotes" (large callout quotes in decorative fonts that repeat sentences already present in the article body).
-   - Exclude photo captions, photo credits, and publication mastheads.
-   - Exclude running headers, issue dates, and standalone page numbers.
-
-3. PAGE DETECTION & MOTION:
-   - Identify each distinct, settled page spread as it becomes stationary. Ignore blurry transition frames, hands, or pages in mid-turn.
-   - Transcribe each settled page completely in sequential reading order. Do NOT summarize or omit body text.
-   
-4. DEDUPLICATION:
-   - When the camera dwells on a page across several seconds, output that page's text only ONCE. Do NOT repeat sentences or paragraphs.
-   
-5. LINE BREAKS & HYPHENATION:
-   - Rejoin hyphenated words broken across line breaks (e.g. "dis-" on one line and "cover" on the next must become "discover").
-   - Connect sentences that begin at the bottom of one page/column and finish at the top of the next page/column into seamless, continuous text.
-
-6. FORMATTING:
-   - Separate distinct paragraphs with double newlines.
-   - Mark major article headlines, chapter starts, or section titles with [CHAPTER: Title].`,
-                },
-              ],
-            },
-          ],
-        });
-
-        addUsage((extractionResponse as any).usageMetadata);
-        rawText = extractionResponse.text || "";
       }
 
-      if (!rawText || rawText.length < 50) {
+      if (!rawText || rawText.trim().length < 50) {
         throw new Error(
-          "Failed to extract meaningful text from the video. The video may not contain readable text."
+          "Failed to extract readable text from the video. Please ensure the book pages are well-lit and held steady when scanning."
         );
       }
 
@@ -366,7 +529,7 @@ Key Instructions:
       if (documentType === "auto") {
         try {
           const classificationResponse = await ai.models.generateContent({
-            model: "gemini-3.6-flash",
+            model: "gemini-3.8-flash",
             contents: [
               {
                 role: "user",
@@ -501,73 +664,36 @@ Rules:
 
       // Pre-clean line breaks, hyphens, and noise artifacts
       const preCleanedText = preCleanOcrText(rawText);
+      let cleanText = preCleanedText;
 
-      const cleaningResponse = await ai.models.generateContent({
-        model: "gemini-3.6-flash",
-        contents: [
-          {
-            role: "user",
-            parts: [
-              {
-                text: `${cleaningPrompt}
+      try {
+        const cleaningResponse = await ai.models.generateContent({
+          model: "gemini-3.8-flash",
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: `${cleaningPrompt}
 
 Text to clean:
 ${preCleanedText}`,
-              },
-            ],
-          },
-        ],
-      });
+                },
+              ],
+            },
+          ],
+        });
 
-      addUsage((cleaningResponse as any).usageMetadata);
-      const cleanText = preCleanOcrText(cleaningResponse.text || preCleanedText);
+        addUsage((cleaningResponse as any).usageMetadata);
+        if (cleaningResponse.text && cleaningResponse.text.trim().length >= 50) {
+          cleanText = preCleanOcrText(cleaningResponse.text);
+        }
+      } catch (cleanErr) {
+        console.warn("Text cleaning step fallback to preCleanedText:", cleanErr);
+      }
 
       // Extract chapters from the cleaned text
       const chapters = extractChapters(cleanText);
-
-/**
- * Queries Google Books API and Open Library API to fetch high-quality public cover art.
- * Costs $0 and uses 0 AI tokens.
- */
-async function fetchBookCoverUrl(title: string, author?: string): Promise<string | undefined> {
-  if (!title || title === "Untitled Audiobook") return undefined;
-  
-  // 1. Primary Lookup: Google Books API (free public metadata endpoint)
-  try {
-    const qParams = author && author !== "Unknown Author" 
-      ? `intitle:${encodeURIComponent(title)}+inauthor:${encodeURIComponent(author)}`
-      : encodeURIComponent(title);
-    const url = `https://www.googleapis.com/books/v1/volumes?q=${qParams}&maxResults=1`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = (await res.json()) as any;
-      const imageLinks = data.items?.[0]?.volumeInfo?.imageLinks;
-      const img = imageLinks?.thumbnail || imageLinks?.smallThumbnail || imageLinks?.medium || imageLinks?.large;
-      if (img) {
-        return img.replace(/^http:\/\//i, 'https://');
-      }
-    }
-  } catch (e) {
-    console.warn("Google Books cover lookup failed:", e);
-  }
-
-  // 2. Secondary Fallback: Open Library Covers API
-  try {
-    const olUrl = `https://openlibrary.org/search.json?title=${encodeURIComponent(title)}&limit=1`;
-    const res = await fetch(olUrl);
-    if (res.ok) {
-      const data = (await res.json()) as any;
-      const coverId = data.docs?.[0]?.cover_i;
-      if (coverId) {
-        return `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`;
-      }
-    }
-  } catch (e) {
-    console.warn("Open Library cover lookup failed:", e);
-  }
-
-  return undefined;
-}
 
       // ── Step 5b: Identify Book Title, Author, and Copyright Status ──
       let detectedTitle = bookId; 
@@ -576,7 +702,7 @@ async function fetchBookCoverUrl(title: string, author?: string): Promise<string
 
       try {
         const metadataResponse = await ai.models.generateContent({
-          model: "gemini-3.6-flash",
+          model: "gemini-3.8-flash",
           contents: [
             {
               role: "user",
