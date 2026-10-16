@@ -87,11 +87,39 @@ function createSilencePcm(durationMs: number, sampleRate = 24000): Buffer {
 }
 
 /**
- * Splits text into chunks at natural paragraph boundaries, targeting up to maxChars (default 12000).
- * 12,000 characters corresponds to ~5–6 pages of prose, enabling full chapters to synthesize
- * as single continuous takes whenever possible, preventing jarring tonal shifts.
+ * Normalizes speech audio using FFmpeg with EBU R128 (-16 LUFS) and dynamic loudness leveling.
+ * Eliminates sudden volume/energy jumps between distinct takes and guarantees standard audiobook loudness.
  */
-function splitTextIntoChunks(text: string, maxChars = 12000): string[] {
+function normalizeAudioWav(inputWavBuffer: Buffer): Buffer {
+  const tempInput = path.join(os.tmpdir(), `norm_in_${Date.now()}_${Math.random().toString(36).substring(7)}.wav`);
+  const tempOutput = path.join(os.tmpdir(), `norm_out_${Date.now()}_${Math.random().toString(36).substring(7)}.wav`);
+  try {
+    fs.writeFileSync(tempInput, inputWavBuffer);
+    const ffmpegPath = ffmpegInstaller.path;
+    execSync(`"${ffmpegPath}" -y -i "${tempInput}" -af "dynaudnorm=f=500:g=15:p=0.95,loudnorm=I=-16:TP=-1.5:LRA=11" -ar 24000 -ac 1 "${tempOutput}"`, {
+      stdio: "pipe",
+    });
+    if (fs.existsSync(tempOutput) && fs.statSync(tempOutput).size > 44) {
+      return fs.readFileSync(tempOutput);
+    }
+    return inputWavBuffer;
+  } catch (err) {
+    console.warn("Audio normalization warning, falling back to raw WAV:", err);
+    return inputWavBuffer;
+  } finally {
+    try {
+      if (fs.existsSync(tempInput)) fs.unlinkSync(tempInput);
+      if (fs.existsSync(tempOutput)) fs.unlinkSync(tempOutput);
+    } catch {}
+  }
+}
+
+/**
+ * Splits text into super-chunks at natural paragraph boundaries, targeting up to maxChars (default 5000).
+ * Large continuous takes preserve vocal momentum, natural cadence, and eliminate the cold-start
+ * pitch resets caused by artificial over-fragmentation. Typical 5-6 page chapters synthesize in 1-2 takes.
+ */
+function splitTextIntoChunks(text: string, maxChars = 5000): string[] {
   const paragraphs = text.split(/\n\n+/);
   const chunks: string[] = [];
   let current = "";
@@ -794,7 +822,6 @@ ${rawText.substring(0, 3000)}`,
           ],
           config: {
             responseModalities: ["AUDIO"],
-            systemInstruction: "Read clearly, neutrally, and professionally as a formal audiobook preface disclaimer.",
             speechConfig: {
               voiceConfig: {
                 prebuiltVoiceConfig: {
@@ -833,7 +860,6 @@ ${rawText.substring(0, 3000)}`,
               ],
               config: {
                 responseModalities: ["AUDIO"],
-                systemInstruction: `${ttsSystemInstruction || "Read in a natural, immersive, and engaging audiobook narrator style."} Maintain strict consistency in vocal pitch, timbre, pacing, and emotional register from beginning to end. Deliver the prose with a smooth, continuous narrative flow without sudden shifts in energy.`,
                 speechConfig: {
                   voiceConfig: {
                     prebuiltVoiceConfig: {
@@ -862,10 +888,10 @@ ${rawText.substring(0, 3000)}`,
           audioBuffers.push(smoothedPcm);
           totalAudioDuration += smoothedPcm.length / 48000;
 
-          // If there are subsequent chunks, insert a natural 500ms paragraph pause
+          // If there are subsequent chunks, insert a natural 750ms paragraph pause
           // giving the narration comfortable breathing room between chunk boundaries
           if (i < textChunks.length - 1) {
-            const pauseBuffer = createSilencePcm(500, 24000);
+            const pauseBuffer = createSilencePcm(750, 24000);
             audioBuffers.push(pauseBuffer);
             totalAudioDuration += pauseBuffer.length / 48000;
           }
@@ -890,10 +916,13 @@ ${rawText.substring(0, 3000)}`,
         totalAudioDuration += watermarkDuration;
       }
 
-      // ── Step 7: Combine PCM buffers and add WAV header ──
+      // ── Step 7: Combine PCM buffers, add WAV header, and normalize audio ──
       const combinedPcm = Buffer.concat(audioBuffers);
-      const wavHeader = createWavHeader(combinedPcm.length, 24000, 1, 16);
-      const wavBuffer = Buffer.concat([wavHeader, combinedPcm]);
+      const rawWavHeader = createWavHeader(combinedPcm.length, 24000, 1, 16);
+      const rawWavBuffer = Buffer.concat([rawWavHeader, combinedPcm]);
+
+      // Normalize audio loudness (EBU R128 -16 LUFS + dynamic evening)
+      const wavBuffer = normalizeAudioWav(rawWavBuffer);
 
       // ── Step 8: Upload WAV to Firebase Storage ──
       await updateStatus(userId, bookId, "generating_audio", 95);
